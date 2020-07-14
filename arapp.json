@@ -1,0 +1,37 @@
+{
+  "roles": [
+    {
+      "name": "Change minimum seconds nedeed to access to rewards",
+      "id": "CHANGE_MIN_SECONDS_THREESOLD",
+      "params": []
+    },
+    {
+      "name": "Change vault",
+      "id": "CHANGE_VAULT_ROLE",
+      "params": []
+    }
+  ],
+  "environments": {
+    "default": {
+      "appName": "voting-reward.aragonpm.eth",
+      "network": "rpc"
+    },
+    "rinkeby": {
+      "registry": "0x98df287b6c145399aaa709692c8d308357bc085d",
+      "appName": "voting-reward.open.aragonpm.eth",
+      "network": "rinkeby"
+    },
+    "staging": {
+      "registry": "0xfe03625ea880a8cba336f9b5ad6e15b0a3b5a939",
+      "appName": "voting-reward.aragonpm.eth",
+      "network": "rinkeby"
+    },
+    "mainnet": {
+      "registry": "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e",
+      "appName": "voting-reward.aragonpm.eth",
+      "network": "mainnet"
+    }
+  },
+  "appName": "voting-reward",
+  "path": "contracts/VotingReward.sol"
+}
