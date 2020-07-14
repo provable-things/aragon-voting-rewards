@@ -35,7 +35,7 @@ contract VotingReward is AragonApp {
     // prettier-ignore
     string private constant ERROR_TOO_MUCH_MISSING_VOTES = "VOTING_REWARD_TOO_MUCH_MISSING_VOTES";
     // prettier-ignore
-    string private constant ERROR_EPOCH_NOT_REACHED = "VOTING_REWARD_EPOCH_NOT_REACHED";
+    string private constant ERROR_EPOCH = "VOTING_REWARD_ERROR_EPOCH";
 
     Vault public baseVault;
     Vault public rewardsVault;
@@ -46,7 +46,6 @@ contract VotingReward is AragonApp {
     uint64 private deployDate;
 
     mapping(address => uint64) public lastDateClaimedRewards;
-    mapping(address => uint64) public addressDateLastDistributedReward;
 
     event EpochChanged(uint64 epoch);
     event BaseVaultChanged(address baseVault);
@@ -93,8 +92,6 @@ contract VotingReward is AragonApp {
         uint256 votesLength = voting.votesLength();
         require(votesLength > 0, ERROR_VOTING_NO_VOTES);
 
-        uint64 timestamp = getTimestamp64();
-
         uint64 lastDateClaimedReward = 0;
         if (lastDateClaimedRewards[_beneficiary] != 0) {
             lastDateClaimedReward = lastDateClaimedRewards[_beneficiary];
@@ -102,10 +99,12 @@ contract VotingReward is AragonApp {
             lastDateClaimedReward = deployDate;
         }
 
+        uint64 timestamp = getTimestamp64();
+
         // must be passed at least one epoch before requesting another reward
         require(
             timestamp - lastDateClaimedReward >= epoch,
-            ERROR_EPOCH_NOT_REACHED
+            ERROR_EPOCH
         );
 
         // missingVotesThreeshold is (now - lastDateClaimedReward) / epoch
@@ -115,9 +114,8 @@ contract VotingReward is AragonApp {
             .sub(lastDateClaimedReward)
             .div(epoch);
 
-        uint64 recentVote = 0;
         uint256 missingVotes = 0;
-        // TODO: calculate reward correctly
+        // TODO: calculate reward correctly. Maybe based on number of epochs and balance at that epoch
         uint256 reward = 10;
 
         for (uint256 voteId = 0; voteId < votesLength; voteId++) {
@@ -126,17 +124,14 @@ contract VotingReward is AragonApp {
 
             // if a vote is within the threeshold
             if (startDate >= lastDateClaimedReward) {
+                //votesInRange = votesInRange.add(1);
+
                 Voting.VoterState state = voting.getVoterState(
                     voteId,
                     _beneficiary
                 );
 
-                // if _beneficiary has voted
-                if (state != Voting.VoterState.Absent) {
-                    if (startDate > recentVote) {
-                        recentVote = startDate;
-                    }
-                } else {
+                if (state == Voting.VoterState.Absent) {
                     missingVotes = missingVotes.add(1);
                 }
 
@@ -154,7 +149,8 @@ contract VotingReward is AragonApp {
             ERROR_VAULT_INSUFFICENT_TOKENS
         );
 
-        lastDateClaimedRewards[_beneficiary] = recentVote;
+        // TODO: understan if it's better to set the date equal to now(timestamp) or the most recent vote date
+        lastDateClaimedRewards[_beneficiary] = timestamp;
 
         // TODO: send reward to vaultReward
 
