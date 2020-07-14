@@ -324,7 +324,7 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
 
         await assertRevert(
           claim(votingReward, appManager, appManager),
-          'VOTING_REWARD_EPOCH_NOT_REACHED'
+          'VOTING_REWARD_ERROR_EPOCH'
         )
       })
 
@@ -409,9 +409,32 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
         }
 
         await timeTravel(EPOCH)
-        assertRevert(
+        await assertRevert(
           claim(votingReward, appManager, appManager),
           'VOTING_REWARD_TOO_MUCH_MISSING_VOTES'
+        )
+      })
+
+      it('Should not be able to get a double reward for an epoch', async () => {
+        const numVotes = 10
+        for (let voteId = 0; voteId < numVotes; voteId++) {
+          await newVote(
+            voting,
+            executionTarget.address,
+            executionTarget.contract.methods.execute().encodeABI(),
+            appManager
+          )
+
+          await timeTravel(ONE_HOURS)
+          await vote(voting, voteId, appManager)
+        }
+
+        await timeTravel(EPOCH)
+        await claim(votingReward, appManager, appManager)
+
+        await assertRevert(
+          claim(votingReward, appManager, appManager),
+          'VOTING_REWARD_ERROR_EPOCH'
         )
       })
     })
