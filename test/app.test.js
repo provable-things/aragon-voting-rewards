@@ -3,8 +3,8 @@ const { assertRevert } = require('@aragon/contract-test-helpers/assertThrow')
 const { newDao, newApp } = require('./helpers/dao')
 const { setPermission, setOpenPermission } = require('./helpers/permissions')
 const timeTravel = require('./helpers/time-travel')
-const { getNewProxyAddress } = require('@aragon/test-helpers/events')
-const { newVote, vote } = require('./helpers/utils')
+const { claim, newVote, vote } = require('./helpers/utils')
+const { getEventArgument } = require('@aragon/test-helpers/events')
 
 const MiniMeToken = artifacts.require('MiniMeToken')
 const MiniMeTokenFactory = artifacts.require('MiniMeTokenFactory')
@@ -18,10 +18,12 @@ const { hash: nameHash } = require('eth-ens-namehash')
 const ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
 const MOCK_TOKEN_BALANCE = 100000
 const MINIME_TOKEN_BALANCE = 100000
+const ONE_HOURS = 3600
 const ONE_DAY = 86400
 const SUPPORT_REQUIRED_PCT = '510000000000000000' // 51%
 const MIN_ACCEPTED_QUORUM_PCT = '510000000000000000' // 51%
 const VOTE_TIME = ONE_DAY * 5 // a vote is open for 5 day
+const EPOCH = ONE_DAY * 365
 
 contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
   let miniMeToken,
@@ -29,10 +31,13 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
     votingReward,
     voting,
     votingBase,
-    rewardToken,
-    vaultBase,
-    vault,
+    rewardsToken,
+    baseVaultBase,
+    baseVault,
+    rewardsVaultBase,
+    rewardsVault,
     executionTarget
+
   let TRANSFER_ROLE,
     CHANGE_MIN_SECONDS_THREESOLD,
     CHANGE_VAULT_ROLE,
@@ -50,8 +55,9 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
     votingBase = await Voting.new()
     CREATE_VOTES_ROLE = await votingBase.CREATE_VOTES_ROLE()
 
-    vaultBase = await Vault.new()
-    TRANSFER_ROLE = await vaultBase.TRANSFER_ROLE()
+    baseVaultBase = await Vault.new()
+    rewardsVaultBase = await Vault.new()
+    TRANSFER_ROLE = await baseVaultBase.TRANSFER_ROLE()
   })
 
   beforeEach('deploy dao and token deposit', async () => {
@@ -79,11 +85,20 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
       )
     )
 
-    vault = await Vault.at(
+    baseVault = await Vault.at(
       await newApp(
         dao,
         nameHash('vault.aragonpm.test'),
-        vaultBase.address,
+        baseVaultBase.address,
+        appManager
+      )
+    )
+
+    rewardsVault = await Vault.at(
+      await newApp(
+        dao,
+        nameHash('vault2.aragonpm.test'),
+        rewardsVaultBase.address,
         appManager
       )
     )
@@ -97,23 +112,36 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
       )
     )
 
-    await vault.initialize()
+    await baseVault.initialize()
     await voting.initialize(
       miniMeToken.address,
       SUPPORT_REQUIRED_PCT,
       MIN_ACCEPTED_QUORUM_PCT,
       VOTE_TIME
     )
-
-    rewardToken = await MockErc20.new(vault.address, MOCK_TOKEN_BALANCE)
+    rewardsToken = await MockErc20.new(baseVault.address, MOCK_TOKEN_BALANCE)
 
     await miniMeToken.generateTokens(appManager, MINIME_TOKEN_BALANCE)
   })
 
-  describe('initialize(address _vault, address _voting, address _rewardToken, _uint64 _minSecondsThreeshold) fails', async () => {
-    it('Should revert when passed non-contract address as vault', async () => {
+  describe('initialize(address _baseVault, address _rewardsVault, address _voting, address _rewardToken, _uint64 _minSecondsThreeshold) fails', async () => {
+    it('Should revert when passed non-contract address as baseVault', async () => {
       await assertRevert(
         votingReward.initialize(
+          NOT_CONTRACT,
+          rewardsVault.address,
+          voting.address,
+          ETH_ADDRESS,
+          ONE_DAY
+        ),
+        'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
+      )
+    })
+
+    it('Should revert when passed non-contract address as rewardsVault', async () => {
+      await assertRevert(
+        votingReward.initialize(
+          rewardsVault.address,
           NOT_CONTRACT,
           voting.address,
           ETH_ADDRESS,
@@ -126,7 +154,8 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
     it('Should revert when passed non-contract address as voting', async () => {
       await assertRevert(
         votingReward.initialize(
-          vault.address,
+          baseVault.address,
+          rewardsVault.address,
           NOT_CONTRACT,
           ETH_ADDRESS,
           ONE_DAY
@@ -138,7 +167,8 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
     it('Should revert when passed non-contract address as deposit token', async () => {
       await assertRevert(
         votingReward.initialize(
-          vault.address,
+          baseVault.address,
+          rewardsVault.address,
           voting.address,
           NOT_CONTRACT,
           ONE_DAY
@@ -148,27 +178,30 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
     })
   })
 
-  describe('initialize(address _vault, address _voting, address _rewardToken, _uint64 _minSecondsThreeshold)', () => {
+  describe('initialize(address _baseVault, address _rewardsVault, address _voting, address _rewardToken, _uint64 _minSecondsThreeshold)', () => {
     beforeEach(async () => {
       await votingReward.initialize(
-        vault.address,
+        baseVault.address,
+        rewardsVault.address,
         voting.address,
-        rewardToken.address,
-        ONE_DAY
+        rewardsToken.address,
+        EPOCH
       )
     })
 
-    /*it('Should set correct variables', async () => {
+    it('Should set correct variables', async () => {
       const actualVoting = await votingReward.voting()
-      const actualVault = await votingReward.vault()
-      const actualRewardToken = await votingReward.rewardToken()
+      const actualBaseVault = await votingReward.baseVault()
+      const actualRewardVault = await votingReward.rewardsVault()
+      const actualRewardToken = await votingReward.rewardsToken()
 
       assert.strictEqual(actualVoting, voting.address)
-      assert.strictEqual(actualVault, vault.address)
-      assert.strictEqual(actualRewardToken, rewardToken.address)
+      assert.strictEqual(actualBaseVault, baseVault.address)
+      assert.strictEqual(actualRewardVault, rewardsVault.address)
+      assert.strictEqual(actualRewardToken, rewardsToken.address)
     })
 
-    it('Should set able to change vault, voting and minimun seconds', async () => {
+    it('Should set able to change baseVault, rewardsVault voting and minimun seconds', async () => {
       await setPermission(
         acl,
         appManager,
@@ -193,41 +226,54 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
         appManager
       )
 
-      await votingReward.changeMinSecondsThreeshold(ONE_DAY * 7, {
+      await votingReward.changeEpoch(EPOCH + ONE_DAY, {
         from: appManager,
       })
 
-      // NOTE: only for this test
-      await votingReward.changeVault(voting.address, {
+      await votingReward.changeBaseVault(rewardsVault.address, {
         from: appManager,
       })
 
-      // NOTE: only for this test
-      await votingReward.changeVoting(vault.address, {
+      await votingReward.changeRewardVault(baseVault.address, {
         from: appManager,
       })
 
-      const actualVault = await votingReward.vault()
+      await votingReward.changeVoting(baseVault.address, {
+        from: appManager,
+      })
+
+      const actualBaseVault = await votingReward.baseVault()
+      const actualRewardVault = await votingReward.rewardsVault()
       const actualVoting = await votingReward.voting()
-      const minSecondsThreeshold = parseInt(await votingReward.minSecondsThreeshold())
+      const epoch = parseInt(await votingReward.epoch())
 
-      assert.strictEqual(actualVault, voting.address)
-      assert.strictEqual(actualVoting, vault.address)
-      assert.strictEqual(minSecondsThreeshold, ONE_DAY * 7)
+      assert.strictEqual(actualBaseVault, rewardsVault.address)
+      assert.strictEqual(actualRewardVault, baseVault.address)
+      assert.strictEqual(actualVoting, baseVault.address)
+      assert.strictEqual(epoch, EPOCH + ONE_DAY)
     })
 
-    it('Should not be able to set minSecondsThreeshold because of no permission', async () => {
+    it('Should not be able to set epoch because of no permission', async () => {
       await assertRevert(
-        votingReward.changeMinSecondsThreeshold(ONE_DAY * 7, {
+        votingReward.changeEpoch(EPOCH, {
           from: appManager,
         }),
         'APP_AUTH_FAILED'
       )
     })
 
-    it('Should not be able to set a new Vault because of no permission', async () => {
+    it('Should not be able to set a new Base Vault because of no permission', async () => {
       await assertRevert(
-        votingReward.changeVault(vault.address, {
+        votingReward.changeBaseVault(baseVault.address, {
+          from: appManager,
+        }),
+        'APP_AUTH_FAILED'
+      )
+    })
+
+    it('Should not be able to set a new Reward Vault because of no permission', async () => {
+      await assertRevert(
+        votingReward.changeBaseVault(rewardsVault.address, {
           from: appManager,
         }),
         'APP_AUTH_FAILED'
@@ -236,14 +282,14 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
 
     it('Should not be able to set a new Voting because of no permission', async () => {
       await assertRevert(
-        votingReward.changeVoting(vault.address, {
+        votingReward.changeVoting(baseVault.address, {
           from: appManager,
         }),
         'APP_AUTH_FAILED'
       )
-    })*/
+    })
 
-    describe('claimRewards()', async () => {
+    describe('claimReward()', async () => {
       beforeEach(async () => {
         executionTarget = await ExecutionTarget.new()
 
@@ -257,12 +303,12 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
 
       it('Should fail because of not votes', async () => {
         await assertRevert(
-          votingReward.claimRewards(),
-          'VOTING_REWARD_VAULT_NO_VOTES'
+          claim(votingReward, appManager),
+          'VOTING_REWARD_VOTING_NO_VOTES'
         )
       })
 
-      it('Should be able to get a reward', async () => {
+      it('Should not be able to get a reward because an EPOCH since first vote is not passed', async () => {
         const numVotes = 10
         for (let voteId = 0; voteId < numVotes; voteId++) {
           await newVote(
@@ -272,9 +318,101 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
             appManager
           )
 
-          await timeTravel(ONE_DAY)
+          await timeTravel(ONE_HOURS)
           await vote(voting, voteId, appManager)
         }
+
+        await assertRevert(
+          claim(votingReward, appManager, appManager),
+          'VOTING_REWARD_EPOCH_NOT_REACHED'
+        )
+      })
+
+      it('Should be able to get a reward after an epoch because it has voted to ALL proposals', async () => {
+        const numVotes = 10
+        for (let voteId = 0; voteId < numVotes; voteId++) {
+          await newVote(
+            voting,
+            executionTarget.address,
+            executionTarget.contract.methods.execute().encodeABI(),
+            appManager
+          )
+
+          await timeTravel(ONE_HOURS)
+          await vote(voting, voteId, appManager)
+        }
+
+        await timeTravel(EPOCH)
+        const receipt = await claim(votingReward, appManager, appManager)
+        const beneficiary = getEventArgument(
+          receipt,
+          'RewardDistributed',
+          'beneficiary'
+        )
+        const amount = getEventArgument(receipt, 'RewardDistributed', 'amount')
+
+        assert.strictEqual(beneficiary, appManager)
+        // TODO: change reward
+        assert.strictEqual(parseInt(amount), 10)
+      })
+
+      it('Should be able to get a reward after an epoch because it has voted to ALL - 1 proposals', async () => {
+        const numVotes = 10
+        for (let voteId = 0; voteId < numVotes; voteId++) {
+          await newVote(
+            voting,
+            executionTarget.address,
+            executionTarget.contract.methods.execute().encodeABI(),
+            appManager
+          )
+
+          await timeTravel(ONE_HOURS)
+          await vote(voting, voteId, appManager)
+        }
+
+        await newVote(
+          voting,
+          executionTarget.address,
+          executionTarget.contract.methods.execute().encodeABI(),
+          appManager
+        )
+
+        await timeTravel(EPOCH)
+        const receipt = await claim(votingReward, appManager, appManager)
+        const beneficiary = getEventArgument(
+          receipt,
+          'RewardDistributed',
+          'beneficiary'
+        )
+        const amount = getEventArgument(receipt, 'RewardDistributed', 'amount')
+
+        assert.strictEqual(beneficiary, appManager)
+        // TODO: change reward
+        assert.strictEqual(parseInt(amount), 10)
+      })
+
+      it('Should not be able to get a reward after an epoch because it has not voted to at least ALL - 1 proposals', async () => {
+        const numVotes = 10
+        for (let voteId = 0; voteId < numVotes; voteId++) {
+          await newVote(
+            voting,
+            executionTarget.address,
+            executionTarget.contract.methods.execute().encodeABI(),
+            appManager
+          )
+
+          await timeTravel(ONE_HOURS)
+
+          if (voteId % 2 === 0) {
+            await vote(voting, voteId, appManager)
+          }
+        }
+
+        await timeTravel(EPOCH)
+        assertRevert(
+          claim(votingReward, appManager, appManager),
+          'VOTING_REWARD_TOO_MUCH_MISSING_VOTES'
+        )
       })
     })
   })
