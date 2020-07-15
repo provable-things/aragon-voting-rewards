@@ -34,29 +34,29 @@ yarn test
 
 ```
     initialize(address _baseVault, address _rewardsVault, address _voting, address _rewardToken, _uint64 _minSecondsThreeshold) fails
-      ✓ Should revert when passed non-contract address as baseVault (50ms)
+      ✓ Should revert when passed non-contract address as baseVault (51ms)
       ✓ Should revert when passed non-contract address as rewardsVault
       ✓ Should revert when passed non-contract address as voting
       ✓ Should revert when passed non-contract address as deposit token
     initialize(address _baseVault, address _rewardsVault, address _voting, address _rewardToken, _uint64 _minSecondsThreeshold)
-      ✓ Should set correct variables
-      ✓ Should set able to change baseVault, rewardsVault voting and minimun seconds (226ms)
-      ✓ Should not be able to set epoch because of no permission (42ms)
+      ✓ Should set correct variables (40ms)
+      ✓ Should set able to change baseVault, rewardsVault voting and minimun seconds (219ms)
+      ✓ Should not be able to set epoch because of no permission (43ms)
       ✓ Should not be able to set a new Base Vault because of no permission (47ms)
-      ✓ Should not be able to set a new Reward Vault because of no permission
-      ✓ Should not be able to set a new Voting because of no permission (38ms)
+      ✓ Should not be able to set a new Reward Vault because of no permission (38ms)
+      ✓ Should not be able to set a new Voting because of no permission
       claimReward()
         ✓ Should fail because of not votes
-        ✓ Should not be able to get a reward because an EPOCH since first vote is not passed (580ms)
-        ✓ Should be able to get a reward after an epoch because it has voted to ALL proposals (653ms)
-        ✓ Should be able to get a reward after an epoch because it has voted to ALL - 1 proposals (642ms)
-        ✓ Should not be able to get a reward after an epoch because it has not voted to at least ALL - 1 proposals (452ms)
-        ✓ Should not be able to get a double reward for an epoch (632ms)
-        ✓ Should be able to get a reward after X epoch because it voted to ALL - X proposals (6164ms)
-        ✓ Should not be able to get a reward after X epoch because it did not voted to at least ALL - X proposals (3901ms)
+        ✓ Should not be able to get a reward because an EPOCH since first vote is not passed (535ms)
+        ✓ Should be able to get a reward after 1 EPOCH because it has voted to ALL proposals (623ms)
+        ✓ Should be able to get a reward after 1 EPOCH because it has voted to ALL - 1 proposals (653ms)
+        ✓ Should not be able to get a reward after 1 EPOCH because it has not voted to at least ALL - 1 proposals (464ms)
+        ✓ Should not be able to get a double reward for 1 EPOCH (727ms)
+        ✓ Should be able to get a reward after X EPOCHS because it voted to ALL - X proposals (6117ms)
+        ✓ Should not be able to get a reward after X EPOCHS because it did not voted to at least ALL - X proposals (4461ms)
 
 
-  18 passing (24s)
+  18 passing (25s)
 ```
 
 &nbsp;
