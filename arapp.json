@@ -2,7 +2,7 @@
   "roles": [
     {
       "name": "Change minimum seconds nedeed to access to rewards",
-      "id": "CHANGE_MIN_SECONDS_THREESOLD",
+      "id": "CHANGE_EPOCH_ROLE",
       "params": []
     },
     {
