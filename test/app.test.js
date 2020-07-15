@@ -328,7 +328,7 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
         )
       })
 
-      it('Should be able to get a reward after an epoch because it has voted to ALL proposals', async () => {
+      it('Should be able to get a reward after 1 EPOCH because it has voted to ALL proposals', async () => {
         const numVotes = 10
         for (let voteId = 0; voteId < numVotes; voteId++) {
           await newVote(
@@ -356,7 +356,7 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
         assert.strictEqual(parseInt(amount), 10)
       })
 
-      it('Should be able to get a reward after an epoch because it has voted to ALL - 1 proposals', async () => {
+      it('Should be able to get a reward after 1 EPOCH because it has voted to ALL - 1 proposals', async () => {
         const numVotes = 10
         for (let voteId = 0; voteId < numVotes; voteId++) {
           await newVote(
@@ -391,7 +391,7 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
         assert.strictEqual(parseInt(amount), 10)
       })
 
-      it('Should not be able to get a reward after an epoch because it has not voted to at least ALL - 1 proposals', async () => {
+      it('Should not be able to get a reward after 1 EPOCH because it has not voted to at least ALL - 1 proposals', async () => {
         const numVotes = 10
         for (let voteId = 0; voteId < numVotes; voteId++) {
           await newVote(
@@ -415,7 +415,7 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
         )
       })
 
-      it('Should not be able to get a double reward for an epoch', async () => {
+      it('Should not be able to get a double reward for 1 EPOCH', async () => {
         const numVotes = 10
         for (let voteId = 0; voteId < numVotes; voteId++) {
           await newVote(
@@ -438,7 +438,7 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
         )
       })
 
-      it('Should be able to get a reward after X epoch because it voted to ALL - X proposals', async () => {
+      it('Should be able to get a reward after X EPOCHS because it voted to ALL - X proposals', async () => {
         const numVotes = 10
         const epochs = 10
         for (let epoch = 0; epoch < epochs; epoch++) {
@@ -471,7 +471,7 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
         assert.strictEqual(parseInt(amount), 10)
       })
 
-      it('Should not be able to get a reward after X epoch because it did not voted to at least ALL - X proposals', async () => {
+      it('Should not be able to get a reward after X EPOCHS because it did not voted to at least ALL - X proposals', async () => {
         const numVotes = 10
         const epochs = 10
         for (let epoch = 0; epoch < epochs; epoch++) {
