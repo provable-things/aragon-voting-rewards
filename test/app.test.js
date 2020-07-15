@@ -9,7 +9,7 @@ const {
   newVote,
   vote,
   openClaimForEpoch,
-  closeClaimForEpoch,
+  closeClaimForCurrentEpoch,
   getAccountsBalance,
   getTotalReward,
 } = require('./helpers/utils')
@@ -536,7 +536,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
       })
 
-      it('Should not be able to claim 2 times for the same epoch', async () => {
+      it('Should not be able to claim 2 times in the same epoch', async () => {
         const numVotes = 10
         const claimStart = await now()
 
@@ -562,6 +562,22 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           collectRewards(votingReward, accounts, appManager),
           'VOTING_REWARD_ERROR_EPOCH'
         )
+      })
+
+      it('Should handle correctly the number of epochs', async () => {
+        const numberOfEpochs = 50
+        for (let epoch = 0; epoch < numberOfEpochs; epoch++) {
+          const claimStart = await now()
+          await openClaimForEpoch(votingReward, claimStart, appManager)
+          // distributing reward...
+          await closeClaimForCurrentEpoch(votingReward, appManager)
+
+          const currentEpoch = (await votingReward.currentEpoch()).toString()
+          assert.strictEqual(
+            parseInt(currentEpoch),
+            epoch + 1
+          )
+        }
       })
     })
   })

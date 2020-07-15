@@ -49,9 +49,9 @@ const openClaimForEpoch = (_votingReward, _startFrom, _appManager) =>
     from: _appManager,
   })
 
-const closeClaimForEpoch = (_votingReward, _appManager) =>
-  _votingReward.closeClaimForEpoch({
-    from: _from,
+const closeClaimForCurrentEpoch = (_votingReward, _appManager) =>
+  _votingReward.closeClaimForCurrentEpoch({
+    from: _appManager,
   })
 
 const getAccountsBalance = async (_accounts, _token) => {
@@ -75,7 +75,7 @@ module.exports = {
   newVote,
   vote,
   openClaimForEpoch,
-  closeClaimForEpoch,
+  closeClaimForCurrentEpoch,
   collectForAddress,
   getAccountsBalance,
   getTotalReward,
