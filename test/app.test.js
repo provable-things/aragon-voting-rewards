@@ -437,6 +437,65 @@ contract('VotingReward', ([appManager, ACCOUNTS_1, ...accounts]) => {
           'VOTING_REWARD_ERROR_EPOCH'
         )
       })
+
+      it('Should be able to get a reward after X epoch because it voted to ALL - X proposals', async () => {
+        const numVotes = 10
+        const epochs = 10
+        for (let epoch = 0; epoch < epochs; epoch++) {
+          for (let voteId = 0; voteId < numVotes; voteId++) {
+            await newVote(
+              voting,
+              executionTarget.address,
+              executionTarget.contract.methods.execute().encodeABI(),
+              appManager
+            )
+
+            await timeTravel(ONE_HOURS)
+            if (voteId !== numVotes - 1) {
+              await vote(voting, voteId + epoch * numVotes, appManager)
+            }
+          }
+          await timeTravel(EPOCH)
+        }
+
+        const receipt = await claim(votingReward, appManager, appManager)
+        const beneficiary = getEventArgument(
+          receipt,
+          'RewardDistributed',
+          'beneficiary'
+        )
+        const amount = getEventArgument(receipt, 'RewardDistributed', 'amount')
+
+        assert.strictEqual(beneficiary, appManager)
+        // TODO: change reward
+        assert.strictEqual(parseInt(amount), 10)
+      })
+
+      it('Should not be able to get a reward after X epoch because it did not voted to at least ALL - X proposals', async () => {
+        const numVotes = 10
+        const epochs = 10
+        for (let epoch = 0; epoch < epochs; epoch++) {
+          for (let voteId = 0; voteId < numVotes; voteId++) {
+            await newVote(
+              voting,
+              executionTarget.address,
+              executionTarget.contract.methods.execute().encodeABI(),
+              appManager
+            )
+
+            await timeTravel(ONE_HOURS)
+            if (voteId < numVotes / 2) {
+              await vote(voting, voteId + epoch * numVotes, appManager)
+            }
+          }
+          await timeTravel(EPOCH)
+        }
+
+        await assertRevert(
+          claim(votingReward, appManager, appManager),
+          'VOTING_REWARD_TOO_MUCH_MISSING_VOTES'
+        )
+      })
     })
   })
 })
