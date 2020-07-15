@@ -13,4 +13,15 @@ const timeTravel = async (seconds) => {
   await send('evm_mine')
 }
 
-module.exports = timeTravel
+const now = () =>
+  new Promise((_resolve, _reject) => {
+    web3.eth
+      .getBlock('latest')
+      .then(({ timestamp }) => _resolve(timestamp))
+      .catch(_reject)
+  })
+
+module.exports = {
+  timeTravel,
+  now,
+}
