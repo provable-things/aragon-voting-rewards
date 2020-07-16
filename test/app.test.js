@@ -596,8 +596,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         const expectedReward = await getTotalReward(
           accounts,
           miniMeToken,
-          PERCENTAGE_REWARD,
-          numVotes
+          PERCENTAGE_REWARD
         )
         // it works because users have the same balance of miniMeToken
         const expectedRewardSingleUser = expectedReward / accounts.length
@@ -613,12 +612,14 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           for (let account of accounts) {
             await timeTravel(ONE_HOURS)
             await vote(voting, voteId, account)
+            // in order (if works) to have the minimun equal to expectedReward since balance increase
+            await miniMeToken.generateTokens(account, 10)
           }
         }
 
         await timeTravel(EPOCH)
         await openClaimForEpoch(votingReward, claimStart, appManager)
-        await collectRewardsForAll(votingReward, accounts, appManager)
+        await collectRewardsForAll(votingReward, accounts, appManager, 5)
         await closeClaimForCurrentEpoch(votingReward, appManager)
 
         // base vault must contain all rewards
@@ -676,12 +677,14 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           for (let account of accounts) {
             await timeTravel(ONE_HOURS)
             await vote(voting, voteId, account)
+            // in order (if works) to have the minimun equal to expectedReward since balance increase
+            await miniMeToken.generateTokens(account, 10)
           }
         }
 
         await timeTravel(EPOCH)
         await openClaimForEpoch(votingReward, claimStart, appManager)
-        await collectRewardsForAll(votingReward, accounts, appManager)
+        await collectRewardsForAll(votingReward, accounts, appManager, 5)
         await closeClaimForCurrentEpoch(votingReward, appManager)
 
         // base vault must contain all rewards
