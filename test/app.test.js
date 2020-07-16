@@ -5,7 +5,6 @@ const { setPermission, setOpenPermission } = require('./helpers/permissions')
 const { timeTravel, now } = require('./helpers/time-travel')
 const {
   collectRewardsForAll,
-  collectRewardsFor,
   newVote,
   vote,
   openClaimForEpoch,
@@ -26,7 +25,6 @@ const { hash: nameHash } = require('eth-ens-namehash')
 
 const ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
 const MOCK_TOKEN_BALANCE = '10000000000000000000000000'
-const MOCK_TOKEN_BALANCE_TO_DISTRIBUTE = '100000000'
 const MINIME_TOKEN_BALANCE = 100000
 const ONE_HOURS = 3600
 const ONE_DAY = 86400
