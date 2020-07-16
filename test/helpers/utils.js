@@ -12,7 +12,12 @@ const vote = (_voting, _voteId, _from) =>
     from: _from,
   })
 
-const collectRewardsForAll = async (_votingReward, _beneficiaries, _appManager, _interval = 10) => {
+const collectRewardsForAll = async (
+  _votingReward,
+  _beneficiaries,
+  _appManager,
+  _interval = 10
+) => {
   const chunksLength = Math.floor(_beneficiaries.length / _interval)
   const remainder = _beneficiaries.length % _interval
 
@@ -38,7 +43,12 @@ const collectRewardsForAll = async (_votingReward, _beneficiaries, _appManager, 
   )
 }
 
-const distributeRewardsForAll = async (_votingReward, _beneficiaries, _appManager, _interval = 10) => {
+const distributeRewardsForAll = async (
+  _votingReward,
+  _beneficiaries,
+  _appManager,
+  _interval = 10
+) => {
   const chunksLength = Math.floor(_beneficiaries.length / _interval)
   const remainder = _beneficiaries.length % _interval
 
@@ -46,10 +56,13 @@ const distributeRewardsForAll = async (_votingReward, _beneficiaries, _appManage
     const from = chunk * _interval
     const to = chunk * _interval + _interval
 
-    await _votingReward.distributeRewardsForAll(_beneficiaries.slice(from, to), {
-      from: _appManager,
-      gas: 9500000,
-    })
+    await _votingReward.distributeRewardsForAll(
+      _beneficiaries.slice(from, to),
+      {
+        from: _appManager,
+        gas: 9500000,
+      }
+    )
   }
 
   await _votingReward.distributeRewardsForAll(
@@ -109,5 +122,5 @@ module.exports = {
   collectRewardsFor,
   getAccountsBalance,
   getTotalReward,
-  distributeRewardsForAll
+  distributeRewardsForAll,
 }

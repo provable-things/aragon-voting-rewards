@@ -11,7 +11,7 @@ const {
   closeClaimForCurrentEpoch,
   getAccountsBalance,
   getTotalReward,
-  distributeRewardsForAll
+  distributeRewardsForAll,
 } = require('./helpers/utils')
 
 const MiniMeToken = artifacts.require('MiniMeToken')
@@ -638,7 +638,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
             expectedRewardSingleUser
           )
         }
-        
+
         await timeTravel(LOCK_TIME)
         await distributeRewardsForAll(votingReward, accounts, appManager)
 
@@ -701,7 +701,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
             expectedRewardSingleUser
           )
         }
-        
+
         await distributeRewardsForAll(votingReward, accounts, appManager)
 
         const actualBalances = await getAccountsBalance(accounts, rewardsToken)
@@ -726,7 +726,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
         // it works because users have the same balance of miniMeToken
         const expectedRewardSingleUser = expectedReward / accounts.length
-          
+
         for (let voteId = 0; voteId < numVotes; voteId++) {
           await newVote(
             voting,
@@ -786,7 +786,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
             expectedRewardSingleUser * 2
           )
         }
-        
+
         // avoid to distribute last collected reward
         await timeTravel(LOCK_TIME - EPOCH - 1)
         await distributeRewardsForAll(votingReward, accounts, appManager)
