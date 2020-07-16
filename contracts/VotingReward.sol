@@ -88,6 +88,7 @@ contract VotingReward is AragonApp {
     event VotingChanged(address voting);
     event PercentageRewardChanged(uint256 percentageReward);
     event RewardLocked(address beneficiary, uint256 amount, uint64 lockTime);
+    event RewardDistributed(address beneficiary, uint256 amount);
     event EpochDurationChanged(uint64 epoch);
     event MissingVoteThreesholdChanged(uint256 amount);
     event LockTimeChanged(uint64 amount);
@@ -376,14 +377,16 @@ contract VotingReward is AragonApp {
         // prettier-ignore
         LockedReward[] storage lockedRewards = addressLockedRewards[_beneficiary];
 
-        for (uint256 j = 0; j < lockedRewards.length; j++) {
-            if (timestamp - lockedRewards[j].lockDate > lockTime) {
+        for (uint256 i = 0; i < lockedRewards.length; i++) {
+            if (timestamp - lockedRewards[i].lockDate > lockTime) {
                 rewardsVault.transfer(
                     rewardsToken,
                     _beneficiary,
-                    lockedRewards[j].amount
+                    lockedRewards[i].amount
                 );
-                delete lockedRewards[j];
+
+                emit RewardDistributed(_beneficiary, lockedRewards[i].amount);
+                delete lockedRewards[i];
             }
         }
     }
