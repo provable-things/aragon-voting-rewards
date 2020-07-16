@@ -465,7 +465,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
       )
     })
 
-    describe('claimReward() init fails', async () => {
+    describe('rewards init fails', async () => {
       beforeEach(async () => {
         executionTarget = await ExecutionTarget.new()
 
@@ -529,7 +529,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
       })
     })
 
-    describe('claimReward()', async () => {
+    describe('rewards', async () => {
       beforeEach(async () => {
         executionTarget = await ExecutionTarget.new()
 
@@ -712,6 +712,93 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           )
         }
       })
+
+      it('Should be able to collect but not distribute all rewards (only tot/2)', async () => {
+        const numVotes = 10
+        let claimStart = await now()
+
+        const intialBalances = await getAccountsBalance(accounts, rewardsToken)
+        const expectedReward = await getTotalReward(
+          accounts,
+          miniMeToken,
+          PERCENTAGE_REWARD,
+          numVotes
+        )
+        // it works because users have the same balance of miniMeToken
+        const expectedRewardSingleUser = expectedReward / accounts.length
+          
+        for (let voteId = 0; voteId < numVotes; voteId++) {
+          await newVote(
+            voting,
+            executionTarget.address,
+            executionTarget.contract.methods.execute().encodeABI(),
+            appManager
+          )
+
+          for (let account of accounts) {
+            await timeTravel(ONE_HOURS)
+            await vote(voting, voteId, account)
+          }
+        }
+
+        await timeTravel(EPOCH)
+
+        await openClaimForEpoch(votingReward, claimStart, appManager)
+        await collectRewardsForAll(votingReward, accounts, appManager, 5)
+        await closeClaimForCurrentEpoch(votingReward, appManager)
+
+        claimStart = await now()
+
+        for (let voteId = numVotes; voteId < numVotes * 2; voteId++) {
+          await newVote(
+            voting,
+            executionTarget.address,
+            executionTarget.contract.methods.execute().encodeABI(),
+            appManager
+          )
+
+          for (let account of accounts) {
+            await timeTravel(ONE_HOURS)
+            await vote(voting, voteId, account)
+          }
+        }
+
+        await timeTravel(EPOCH)
+
+        await openClaimForEpoch(votingReward, claimStart, appManager)
+        await collectRewardsForAll(votingReward, accounts, appManager, 5)
+        await closeClaimForCurrentEpoch(votingReward, appManager)
+
+        // base vault must contain all rewards
+        const actualVaultBalance = await rewardsToken.balanceOf(
+          rewardsVault.address
+        )
+        assert.strictEqual(
+          (expectedReward * 2).toString(),
+          actualVaultBalance.toString()
+        )
+
+        // expected locked 2 rewards
+        for (let account of accounts) {
+          const rewards = await votingReward.getLockedRewards(account)
+          assert.strictEqual(
+            parseInt(rewards[0].amount) + parseInt(rewards[1].amount),
+            expectedRewardSingleUser * 2
+          )
+        }
+        
+        // avoid to distribute last collected reward
+        await timeTravel(LOCK_TIME - EPOCH - 1)
+        await distributeRewardsForAll(votingReward, accounts, appManager)
+
+        const actualBalances = await getAccountsBalance(accounts, rewardsToken)
+        for (let account of accounts) {
+          assert.strictEqual(
+            parseInt(actualBalances[account]),
+            parseInt(intialBalances[account]) + expectedRewardSingleUser
+          )
+        }
+      }).timeout(50000)
 
       it('Should not be able to open a claim if there is another one opened', async () => {
         const numVotes = 10
