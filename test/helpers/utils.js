@@ -62,7 +62,12 @@ const getAccountsBalance = async (_accounts, _token) => {
   return balances
 }
 
-const getTotalReward = async (_accounts, _token, _percentageReward, _numVotes) => {
+const getTotalReward = async (
+  _accounts,
+  _token,
+  _percentageReward,
+  _numVotes
+) => {
   let total = 0
   for (let account of _accounts) {
     total += ((await _token.balanceOf(account)) * _percentageReward) / 100
