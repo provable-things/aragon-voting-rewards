@@ -58,13 +58,10 @@ contract VotingReward is AragonApp {
     // prettier-ignore
     string private constant ERROR_WRONG_VALUE = "VOTING_REWARD_WRONG_VALUE";
 
-    /*enum LockState {Unwithdrawn, Withdrawn}
-
-    struct Lock {
+    struct LockedReward {
         uint256 amount;
-        LockState state;
         uint64 lockDate;
-    }*/
+    }
 
     Vault public baseVault;
     Vault public rewardsVault;
@@ -84,12 +81,13 @@ contract VotingReward is AragonApp {
     bool public isClaimOpened;
 
     mapping(address => uint64) public lastDateClaimedRewards;
+    mapping(address => LockedReward[]) public addressLockedRewards;
 
     event BaseVaultChanged(address baseVault);
     event RewardVaultChanged(address rewardsVault);
     event VotingChanged(address voting);
     event PercentageRewardChanged(uint256 percentageReward);
-    event RewardDistributed(address beneficiary, uint256 amount);
+    event RewardLocked(address beneficiary, uint256 amount, uint64 lockTime);
     event EpochDurationChanged(uint64 epoch);
     event MissingVoteThreesholdChanged(uint256 amount);
     event LockTimeChanged(uint64 amount);
@@ -288,6 +286,20 @@ contract VotingReward is AragonApp {
     }
 
     /**
+     * @notice Returns all locked rewards given an address
+     * @param _beneficiary address of which there are locked rewards
+     */
+    function getLockedRewards(address _beneficiary)
+        external
+        view
+        returns (LockedReward[])
+    {
+        // prettier-ignore
+        LockedReward[] storage lockedRewards = addressLockedRewards[_beneficiary];
+        return lockedRewards;
+    }
+
+    /**
      * @notice Check if msg.sender is able to be rewarded, and in positive case,
      *         he will be funded with the corresponding earned amount of tokens
      * @param _beneficiary address to which the deposit will be transferred if successful
@@ -328,10 +340,18 @@ contract VotingReward is AragonApp {
         // equal to now(timestamp) or the most recent vote date
         lastDateClaimedRewards[_beneficiary] = getTimestamp64();
 
-        // TODO: lock tokens for a given time
+        // prettier-ignore
+        LockedReward[] storage lockedRewards = addressLockedRewards[_beneficiary];
+        uint256 index = _whereInsert(lockedRewards);
+        if (index == lockedRewards.length) {
+            lockedRewards.push(LockedReward(reward, getTimestamp64()));
+        } else {
+            // insert in a deleted slot
+            lockedRewards[index] = LockedReward(reward, getTimestamp64());
+        }
 
         baseVault.transfer(rewardsToken, rewardsVault, reward);
-        emit RewardDistributed(_beneficiary, reward);
+        emit RewardLocked(_beneficiary, reward, lockTime);
     }
 
     /**
@@ -380,7 +400,7 @@ contract VotingReward is AragonApp {
     }
 
     /**
-     * @dev Calculates a percentage
+     * @notice Calculates a percentage
      */
     function _calculatePercentage(uint256 _value, uint256 _pct)
         internal
@@ -388,5 +408,35 @@ contract VotingReward is AragonApp {
         returns (uint256)
     {
         return _value.mul(_pct).div(100);
+    }
+
+    /**
+     * @notice Check is it's possible to insert a new locked reward in a deleted slot
+     * @param _lockedRewards locked rewards for an address
+     */
+    function _whereInsert(LockedReward[] memory _lockedRewards)
+        internal
+        pure
+        returns (uint256)
+    {
+        for (uint64 i = 0; i < _lockedRewards.length; i++) {
+            if (_isLockedRewardEmpty(_lockedRewards[i])) {
+                return i;
+            }
+        }
+
+        return _lockedRewards.length;
+    }
+
+    /**
+     * @notice Check if a LockedReward is empty
+     * @param _lockedReward locked reward
+     */
+    function _isLockedRewardEmpty(LockedReward memory _lockedReward)
+        internal
+        pure
+        returns (bool)
+    {
+        return _lockedReward.lockDate == 0 && _lockedReward.amount == 0;
     }
 }
