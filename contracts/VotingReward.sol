@@ -194,7 +194,7 @@ contract VotingReward is AragonApp {
      */
     function distributeRewardsForAll(address[] _beneficiaries) external {
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
-            distributesRewardsFor(_beneficiaries[i]);
+            distributeRewardsFor(_beneficiaries[i]);
         }
     }
 
@@ -371,7 +371,7 @@ contract VotingReward is AragonApp {
      * @param _beneficiary address that should be fund with rewards
      * @dev rewardsVault should have TRANSFER_ROLE permission
      */
-    function distributesRewardsFor(address _beneficiary) public {
+    function distributeRewardsFor(address _beneficiary) public {
         uint64 timestamp = getTimestamp64();
         // prettier-ignore
         LockedReward[] storage lockedRewards = addressLockedRewards[_beneficiary];
