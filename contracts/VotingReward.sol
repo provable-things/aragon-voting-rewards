@@ -171,11 +171,11 @@ contract VotingReward is AragonApp {
     }
 
     /**
-     * @notice collect rewards for a list of address
+     * @notice collect rewards for a list of address. Tokens are locked for lockTime in rewardsVault
      * @param _beneficiaries address that are looking for reward
      * @dev this function should be called from outside each _epochDuration seconds
      */
-    function collectRewards(address[] _beneficiaries)
+    function collectRewardsForAll(address[] _beneficiaries)
         external
         auth(COLLECT_REWARDS_ROLE)
     {
@@ -183,7 +183,18 @@ contract VotingReward is AragonApp {
         require(isClaimOpened, ERROR_EPOCH_CLAIM_NOT_OPENED);
 
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
-            collectForAddress(_beneficiaries[i]);
+            collectRewardsFor(_beneficiaries[i]);
+        }
+    }
+
+    /**
+     * @notice distribute rewards for a list of address
+     *         if lockTime is passed since when tokens have been distributed
+     * @param _beneficiaries addresses that should be fund with rewards
+     */
+    function distributeRewardsForAll(address[] _beneficiaries) external {
+        for (uint256 i = 0; i < _beneficiaries.length; i++) {
+            distributesRewardsFor(_beneficiaries[i]);
         }
     }
 
@@ -303,8 +314,9 @@ contract VotingReward is AragonApp {
      * @notice Check if msg.sender is able to be rewarded, and in positive case,
      *         he will be funded with the corresponding earned amount of tokens
      * @param _beneficiary address to which the deposit will be transferred if successful
+     * @dev baseVault should have TRANSFER_ROLE permission
      */
-    function collectForAddress(address _beneficiary)
+    function collectRewardsFor(address _beneficiary)
         public
         auth(COLLECT_REWARDS_ROLE)
     {
@@ -352,6 +364,28 @@ contract VotingReward is AragonApp {
 
         baseVault.transfer(rewardsToken, rewardsVault, reward);
         emit RewardLocked(_beneficiary, reward, lockTime);
+    }
+
+    /**
+     * @notice distribute rewards for an address if lockTime is passed since when tokens have been distributed
+     * @param _beneficiary address that should be fund with rewards
+     * @dev rewardsVault should have TRANSFER_ROLE permission
+     */
+    function distributesRewardsFor(address _beneficiary) public {
+        uint64 timestamp = getTimestamp64();
+        // prettier-ignore
+        LockedReward[] storage lockedRewards = addressLockedRewards[_beneficiary];
+
+        for (uint256 j = 0; j < lockedRewards.length; j++) {
+            if (timestamp - lockedRewards[j].lockDate > lockTime) {
+                rewardsVault.transfer(
+                    rewardsToken,
+                    _beneficiary,
+                    lockedRewards[j].amount
+                );
+                delete lockedRewards[j];
+            }
+        }
     }
 
     /**
