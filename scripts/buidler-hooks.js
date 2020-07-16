@@ -1,35 +1,103 @@
-/*
- * These hooks are called by the Aragon Buidler plugin during the start task's lifecycle. Use them to perform custom tasks at certain entry points of the development build process, like deploying a token before a proxy is initialized, etc.
- *
- * Link them to the main buidler config file (buidler.config.js) in the `aragon.hooks` property.
- *
- * All hooks receive two parameters:
- * 1) A params object that may contain other objects that pertain to the particular hook.
- * 2) A "bre" or BuidlerRuntimeEnvironment object that contains enviroment objects like web3, Truffle artifacts, etc.
- *
- * Please see AragonConfigHooks, in the plugin's types for further details on these interfaces.
- * https://github.com/aragon/buidler-aragon/blob/develop/src/types.ts#L22
- */
+const ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
+const MOCK_TOKEN_BALANCE = '10000000000000000000000000'
+const MOCK_TOKEN_DECIMALS = 18
+const ONE_DAY = 86400
+const EPOCH = ONE_DAY * 15
+const PERCENTAGE_REWARD = 42
+const LOCK_TIME = ONE_DAY * 365
+const MISSING_VOTES_THREESHOLD = 1
+
+let accounts
+let voting, baseVault, rewardsVault, tokenManager
 
 module.exports = {
-  // Called before a dao is deployed.
-  preDao: async ({}, { web3, artifacts }) => {},
-
-  // Called after a dao is deployed.
-  postDao: async ({ dao }, { web3, artifacts }) => {},
-
-  // Called after the app's proxy is created, but before it's initialized.
-  preInit: async ({ proxy }, { web3, artifacts }) => {},
-
-  // Called after the app's proxy is initialized.
-  postInit: async ({ proxy }, { web3, artifacts }) => {},
-
-  // Called when the start task needs to know the app proxy's init parameters.
-  // Must return an array with the proxy's init parameters.
-  getInitParams: async ({}, { web3, artifacts }) => {
-    return []
+  preDao: async ({}, { web3, artifacts }) => {
+    accounts = await web3.eth.getAccounts()
+    appManager = accounts[0]
   },
 
-  // Called after the app's proxy is updated with a new implementation.
+  postDao: async ({ dao }, { web3, artifacts }) => {
+    const ACL = artifacts.require('@aragon/os/build/contracts/acl/ACL')
+    acl = await ACL.at(await dao.acl())
+  },
+
+  preInit: async (
+    { proxy, _experimentalAppInstaller, log },
+    { web3, artifacts }
+  ) => {
+    const MiniMeToken = artifacts.require('MiniMeToken')
+    const MiniMeTokenFactory = artifacts.require('MiniMeTokenFactory')
+    const ERC20 = artifacts.require('StandardToken')
+
+    const miniMeTokenFactory = await MiniMeTokenFactory.new()
+    miniMeToken = await MiniMeToken.new(
+      miniMeTokenFactory.address,
+      ETH_ADDRESS,
+      0,
+      'DaoToken',
+      18,
+      'DAOT',
+      true
+    )
+
+    tokenManager = await _experimentalAppInstaller('token-manager', {
+      skipInitialize: true,
+    })
+
+    voting = await _experimentalAppInstaller('voting', {
+      skipInitialize: true,
+    })
+    baseVault = await _experimentalAppInstaller('vault')
+    rewardsVault = await _experimentalAppInstaller('vault')
+
+    await miniMeToken.changeController(tokenManager.address)
+    await tokenManager.initialize([miniMeToken.address, false, 0])
+    await voting.initialize([
+      miniMeToken.address,
+      '510000000000000000', // 51%
+      '510000000000000000', // 51%
+      '604800', // 1 week
+    ])
+
+    rewardsToken = await ERC20.new(
+      'Deposit Token',
+      'DPT',
+      MOCK_TOKEN_DECIMALS,
+      MOCK_TOKEN_BALANCE
+    )
+
+    log(`Base Vault: ${baseVault.address}`)
+    log(`Rewards Vault: ${rewardsVault.address}`)
+    log(`MiniMeToken: ${miniMeToken.address}`)
+    log(`Rewards Token: ${rewardsToken.address}`)
+    log(`TokenManager: ${tokenManager.address}`)
+    log(`ERC20: ${rewardsToken.address}`)
+    log(`${appManager} balance: ${await rewardsToken.balanceOf(appManager)}`)
+  },
+
+  postInit: async ({ proxy }, { web3, artifacts }) => {
+    await voting.createPermission(
+      'CREATE_VOTES_ROLE',
+      '0xffffffffffffffffffffffffffffffffffffffff'
+    )
+    await tokenManager.createPermission('MINT_ROLE', proxy.address)
+    await tokenManager.createPermission('BURN_ROLE', proxy.address)
+    await baseVault.createPermission('TRANSFER_ROLE', proxy.address)
+    await rewardsVault.createPermission('TRANSFER_ROLE', proxy.address)
+  },
+
+  getInitParams: async ({}, { web3, artifacts }) => {
+    return [
+      baseVault.address,
+      rewardsVault.address,
+      voting.address,
+      rewardsToken.address,
+      EPOCH,
+      PERCENTAGE_REWARD,
+      LOCK_TIME,
+      MISSING_VOTES_THREESHOLD,
+    ]
+  },
+
   postUpdate: async ({ proxy }, { web3, artifacts }) => {},
 }
