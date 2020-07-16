@@ -4,14 +4,15 @@ const { newDao, newApp } = require('./helpers/dao')
 const { setPermission, setOpenPermission } = require('./helpers/permissions')
 const { timeTravel, now } = require('./helpers/time-travel')
 const {
-  collectRewards,
-  collectForAddress,
+  collectRewardsForAll,
+  collectRewardsFor,
   newVote,
   vote,
   openClaimForEpoch,
   closeClaimForCurrentEpoch,
   getAccountsBalance,
   getTotalReward,
+  distributeRewardsForAll
 } = require('./helpers/utils')
 
 const MiniMeToken = artifacts.require('MiniMeToken')
@@ -478,9 +479,9 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
       })
 
-      it('Should fail because of no permission to collectRewards rewards', async () => {
+      it('Should fail because of no permission to collectRewardsForAll rewards', async () => {
         await assertRevert(
-          collectRewards(votingReward, [appManager], appManager),
+          collectRewardsForAll(votingReward, [appManager], appManager),
           'APP_AUTH_FAILED'
         )
       })
@@ -495,12 +496,12 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
 
         await assertRevert(
-          collectRewards(votingReward, [appManager], appManager),
+          collectRewardsForAll(votingReward, [appManager], appManager),
           'VOTING_REWARD_VOTING_NO_VOTES'
         )
       })
 
-      it('Should fail on opening an epoch claimi because no permission', async () => {
+      it('Should fail on opening a claim for an epoch because no permission', async () => {
         await assertRevert(
           openClaimForEpoch(votingReward, 10, appManager),
           'APP_AUTH_FAILED'
@@ -524,7 +525,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
 
         await assertRevert(
-          collectRewards(votingReward, [appManager], appManager),
+          collectRewardsForAll(votingReward, [appManager], appManager),
           'VOTING_REWARD_CLAIM_NOT_OPENED'
         )
       })
@@ -538,6 +539,14 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           acl,
           votingReward.address,
           baseVault.address,
+          TRANSFER_ROLE,
+          appManager
+        )
+
+        await setPermission(
+          acl,
+          votingReward.address,
+          rewardsVault.address,
           TRANSFER_ROLE,
           appManager
         )
@@ -581,10 +590,11 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
       })
 
-      it('Should be able to collect rewards for who partecipated actively in voting because an epoch is passed (TO FINISH)', async () => {
+      it('Should be able to collect and distribute rewards for who partecipated actively in voting', async () => {
         const numVotes = 10
         const claimStart = await now()
 
+        const intialBalances = await getAccountsBalance(accounts, rewardsToken)
         const expectedReward = await getTotalReward(
           accounts,
           miniMeToken,
@@ -610,7 +620,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
         await timeTravel(EPOCH)
         await openClaimForEpoch(votingReward, claimStart, appManager)
-        await collectRewards(votingReward, accounts, appManager)
+        await collectRewardsForAll(votingReward, accounts, appManager)
         await closeClaimForCurrentEpoch(votingReward, appManager)
 
         // base vault must contain all rewards
@@ -624,13 +634,85 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
         for (let account of accounts) {
           const rewards = await votingReward.getLockedRewards(account)
-          // there is only 1 reward x user since there has been only one collectRewards
+          // there is only 1 reward x user since there has been only one collectRewardsForAll
           assert.strictEqual(
             parseInt(rewards[0].amount),
             expectedRewardSingleUser
           )
         }
-        // TODO: finish once locking is complete
+        
+        await timeTravel(LOCK_TIME)
+        await distributeRewardsForAll(votingReward, accounts, appManager)
+
+        const actualBalances = await getAccountsBalance(accounts, rewardsToken)
+        for (let account of accounts) {
+          assert.strictEqual(
+            parseInt(actualBalances[account]),
+            parseInt(intialBalances[account]) + expectedRewardSingleUser
+          )
+        }
+      })
+
+      it('Should be able to collect rewards but not distributing for who partecipated actively in voting because a LOCK_TIME period is not passed,', async () => {
+        const numVotes = 10
+        const claimStart = await now()
+
+        const intialBalances = await getAccountsBalance(accounts, rewardsToken)
+        const expectedReward = await getTotalReward(
+          accounts,
+          miniMeToken,
+          PERCENTAGE_REWARD,
+          numVotes
+        )
+        // it works because users have the same balance of miniMeToken
+        const expectedRewardSingleUser = expectedReward / accounts.length
+
+        for (let voteId = 0; voteId < numVotes; voteId++) {
+          await newVote(
+            voting,
+            executionTarget.address,
+            executionTarget.contract.methods.execute().encodeABI(),
+            appManager
+          )
+
+          for (let account of accounts) {
+            await timeTravel(ONE_HOURS)
+            await vote(voting, voteId, account)
+          }
+        }
+
+        await timeTravel(EPOCH)
+        await openClaimForEpoch(votingReward, claimStart, appManager)
+        await collectRewardsForAll(votingReward, accounts, appManager)
+        await closeClaimForCurrentEpoch(votingReward, appManager)
+
+        // base vault must contain all rewards
+        const actualVaultBalance = await rewardsToken.balanceOf(
+          rewardsVault.address
+        )
+        assert.strictEqual(
+          expectedReward.toString(),
+          actualVaultBalance.toString()
+        )
+
+        for (let account of accounts) {
+          const rewards = await votingReward.getLockedRewards(account)
+          // there is only 1 reward x user since there has been only one collectRewardsForAll
+          assert.strictEqual(
+            parseInt(rewards[0].amount),
+            expectedRewardSingleUser
+          )
+        }
+        
+        await distributeRewardsForAll(votingReward, accounts, appManager)
+
+        const actualBalances = await getAccountsBalance(accounts, rewardsToken)
+        for (let account of accounts) {
+          assert.strictEqual(
+            parseInt(actualBalances[account]),
+            parseInt(intialBalances[account])
+          )
+        }
       })
 
       it('Should not be able to open a claim if there is another one opened', async () => {
@@ -653,7 +735,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
         await timeTravel(EPOCH)
         await openClaimForEpoch(votingReward, claimStart, appManager)
-        await collectRewards(votingReward, accounts, appManager)
+        await collectRewardsForAll(votingReward, accounts, appManager)
 
         await assertRevert(
           openClaimForEpoch(votingReward, claimStart, appManager),
@@ -681,10 +763,10 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
         await timeTravel(EPOCH)
         await openClaimForEpoch(votingReward, claimStart, appManager)
-        await collectRewards(votingReward, accounts, appManager)
+        await collectRewardsForAll(votingReward, accounts, appManager)
 
         await assertRevert(
-          collectRewards(votingReward, accounts, appManager),
+          collectRewardsForAll(votingReward, accounts, appManager),
           'VOTING_REWARD_ERROR_EPOCH'
         )
       })
