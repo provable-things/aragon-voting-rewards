@@ -337,16 +337,11 @@ contract VotingReward is AragonApp {
         );
 
         uint64 claimEnd = claimStart.add(epochDuration);
-        uint256 incrementalBalance = _calculateIncrementalBalance(
+        uint256 reward = _calculateReward(
             _beneficiary,
             claimStart,
             claimEnd,
             missingVotesThreeshold
-        );
-
-        uint256 reward = _calculatePercentage(
-            incrementalBalance,
-            percentageReward
         );
 
         // TODO: understand if it's better to set the date
@@ -392,20 +387,27 @@ contract VotingReward is AragonApp {
     }
 
     /**
-     * @notice Return the reward for _beneficiary and the range in which the reward has been calculated
+     * @notice Reward is calculated as the minimun balance between the
+     *         end of an epoch (now) and the balance at the first 
+     *         vote in an epoch (in percentage) for each vote happened within the epoch
      * @param _beneficiary beneficiary
      * @param _from date from wich starting looking for votes
      * @param _to   date to wich stopping looking for votes
      * @param _missingVotesThreeshold number of vote to which is possible to don't vote
      */
-    function _calculateIncrementalBalance(
+    function _calculateReward(
         address _beneficiary,
         uint64 _from,
         uint64 _to,
         uint256 _missingVotesThreeshold
     ) internal view returns (uint256 balance) {
-        uint256 missingVotes = 0;
         MiniMeToken token = MiniMeToken(voting.token());
+
+        uint256 missingVotes = 0;
+        uint256 minimunBalance = token.balanceOfAt(
+            _beneficiary,
+            getBlockNumber64()
+        );
 
         for (uint256 voteId = 0; voteId < voting.votesLength(); voteId++) {
             uint64 startDate;
@@ -420,10 +422,6 @@ contract VotingReward is AragonApp {
 
                 if (state == Voting.VoterState.Absent) {
                     missingVotes = missingVotes.add(1);
-                } else {
-                    balance = balance.add(
-                        token.balanceOfAt(_beneficiary, snapshotBlock)
-                    );
                 }
 
                 require(
@@ -431,9 +429,17 @@ contract VotingReward is AragonApp {
                     ERROR_TOO_MUCH_MISSING_VOTES
                 );
             }
+
+            uint256 balanceAtVote = token.balanceOfAt(
+                _beneficiary,
+                snapshotBlock
+            );
+            if (balanceAtVote < minimunBalance) {
+                minimunBalance = balanceAtVote;
+            }
         }
 
-        return balance;
+        return _calculatePercentage(minimunBalance, percentageReward);
     }
 
     /**
