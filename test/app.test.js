@@ -591,6 +591,8 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           PERCENTAGE_REWARD,
           numVotes
         )
+        // it works because users have the same balance of miniMeToken
+        const expectedRewardSingleUser = expectedReward / accounts.length
 
         for (let voteId = 0; voteId < numVotes; voteId++) {
           await newVote(
@@ -609,6 +611,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         await timeTravel(EPOCH)
         await openClaimForEpoch(votingReward, claimStart, appManager)
         await collectRewards(votingReward, accounts, appManager)
+        await closeClaimForCurrentEpoch(votingReward, appManager)
 
         // base vault must contain all rewards
         const actualVaultBalance = await rewardsToken.balanceOf(
@@ -618,6 +621,15 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           expectedReward.toString(),
           actualVaultBalance.toString()
         )
+
+        for (let account of accounts) {
+          const rewards = await votingReward.getLockedRewards(account)
+          // there is only 1 reward x user since there has been only one collectRewards
+          assert.strictEqual(
+            parseInt(rewards[0].amount),
+            expectedRewardSingleUser
+          )
+        }
         // TODO: finish once locking is complete
       })
 
@@ -649,7 +661,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
       })
 
-      it('Should not be able to claim 2 times in the same epoch', async () => {
+      it('Should not be able to collect rewards 2 times in the same epoch', async () => {
         const numVotes = 10
         const claimStart = await now()
 
