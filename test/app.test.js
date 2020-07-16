@@ -32,8 +32,10 @@ const ONE_DAY = 86400
 const SUPPORT_REQUIRED_PCT = '910000000000000000' // 91% (high to facilitate tests since value is irrilevant)
 const MIN_ACCEPTED_QUORUM_PCT = '910000000000000000' // 91% (high to facilitate tests since value is irrilevant)
 const VOTE_TIME = ONE_DAY * 5 // a vote is opened for 5 days
-const EPOCH = ONE_DAY * 365
+const EPOCH = ONE_DAY * 15
 const PERCENTAGE_REWARD = 42
+const LOCK_TIME = ONE_DAY * 365
+const MISSING_VOTES_THREESHOLD = 1
 
 contract('VotingReward', ([appManager, ...accounts]) => {
   let miniMeToken,
@@ -49,24 +51,28 @@ contract('VotingReward', ([appManager, ...accounts]) => {
     executionTarget
 
   let TRANSFER_ROLE,
-    CHANGE_EPOCH_ROLE,
+    CHANGE_EPOCH_DURATION_ROLE,
     CHANGE_VAULT_ROLE,
     CHANGE_VOTING_ROLE,
     CREATE_VOTES_ROLE,
     CHANGE_PERCENTAGE_REWARD_ROLE,
     COLLECT_REWARDS_ROLE,
-    OPEN_CLAIM_EPOCH_ROLE
+    OPEN_CLAIM_EPOCH_ROLE,
+    CHANGE_MISSING_VOTES_THREESHOLD_ROLE,
+    CHANGE_LOCK_TIME_ROLE
 
   const NOT_CONTRACT = appManager
 
   before('deploy base apps', async () => {
     votingRewardBase = await VotingReward.new()
-    CHANGE_EPOCH_ROLE = await votingRewardBase.CHANGE_EPOCH_ROLE()
+    CHANGE_EPOCH_DURATION_ROLE = await votingRewardBase.CHANGE_EPOCH_DURATION_ROLE()
     CHANGE_VAULT_ROLE = await votingRewardBase.CHANGE_VAULT_ROLE()
     CHANGE_VOTING_ROLE = await votingRewardBase.CHANGE_VOTING_ROLE()
     CHANGE_PERCENTAGE_REWARD_ROLE = await votingRewardBase.CHANGE_PERCENTAGE_REWARD_ROLE()
     COLLECT_REWARDS_ROLE = await votingRewardBase.COLLECT_REWARDS_ROLE()
     OPEN_CLAIM_EPOCH_ROLE = await votingRewardBase.OPEN_CLAIM_EPOCH_ROLE()
+    CHANGE_MISSING_VOTES_THREESHOLD_ROLE = await votingRewardBase.CHANGE_MISSING_VOTES_THREESHOLD_ROLE()
+    CHANGE_LOCK_TIME_ROLE = await votingRewardBase.CHANGE_LOCK_TIME_ROLE()
 
     votingBase = await Voting.new()
     CREATE_VOTES_ROLE = await votingBase.CREATE_VOTES_ROLE()
@@ -145,7 +151,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
     )
   })
 
-  describe('initialize(address _baseVault, address _rewardsVault, address _voting, address _rewardToken, _uint64 _epochDuration, uint64 _percentageReward) fails', async () => {
+  describe('initialize(address _baseVault, address _rewardsVault, address _voting, address _rewardToken, _uint64 _epochDuration, uint64 _percentageReward, uint64 _lockTime, uint256 _missingVotesThreeshold) fails', async () => {
     it('Should revert when passed non-contract address as baseVault', async () => {
       await assertRevert(
         votingReward.initialize(
@@ -154,7 +160,9 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           voting.address,
           ETH_ADDRESS,
           ONE_DAY,
-          PERCENTAGE_REWARD
+          PERCENTAGE_REWARD,
+          LOCK_TIME,
+          MISSING_VOTES_THREESHOLD
         ),
         'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
       )
@@ -168,7 +176,9 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           voting.address,
           ETH_ADDRESS,
           ONE_DAY,
-          PERCENTAGE_REWARD
+          PERCENTAGE_REWARD,
+          LOCK_TIME,
+          MISSING_VOTES_THREESHOLD
         ),
         'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
       )
@@ -182,7 +192,9 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           NOT_CONTRACT,
           ETH_ADDRESS,
           ONE_DAY,
-          PERCENTAGE_REWARD
+          PERCENTAGE_REWARD,
+          LOCK_TIME,
+          MISSING_VOTES_THREESHOLD
         ),
         'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
       )
@@ -196,14 +208,48 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           voting.address,
           NOT_CONTRACT,
           ONE_DAY,
-          PERCENTAGE_REWARD
+          PERCENTAGE_REWARD,
+          LOCK_TIME,
+          MISSING_VOTES_THREESHOLD
+        ),
+        'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
+      )
+    })
+
+    it('Should revert when passed a negative lock time', async () => {
+      await assertRevert(
+        votingReward.initialize(
+          baseVault.address,
+          rewardsVault.address,
+          voting.address,
+          NOT_CONTRACT,
+          ONE_DAY,
+          PERCENTAGE_REWARD,
+          -1,
+          MISSING_VOTES_THREESHOLD
+        ),
+        'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
+      )
+    })
+
+    it('Should revert when passed a negative missing votes threeshold', async () => {
+      await assertRevert(
+        votingReward.initialize(
+          baseVault.address,
+          rewardsVault.address,
+          voting.address,
+          NOT_CONTRACT,
+          ONE_DAY,
+          PERCENTAGE_REWARD,
+          LOCK_TIME,
+          -1
         ),
         'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
       )
     })
   })
 
-  describe('initialize(address _baseVault, address _rewardsVault, address _voting, address _rewardToken, _uint64 _epochDuration, uint64 _percentageReward)', () => {
+  describe('initialize(address _baseVault, address _rewardsVault, address _voting, address _rewardToken, _uint64 _epochDuration, uint64 _percentageReward, uint64 _lockTime, uint256 _missingVotesThreeshold)', () => {
     beforeEach(async () => {
       await votingReward.initialize(
         baseVault.address,
@@ -211,7 +257,9 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         voting.address,
         rewardsToken.address,
         EPOCH,
-        PERCENTAGE_REWARD
+        PERCENTAGE_REWARD,
+        LOCK_TIME,
+        MISSING_VOTES_THREESHOLD
       )
     })
 
@@ -220,19 +268,28 @@ contract('VotingReward', ([appManager, ...accounts]) => {
       const actualBaseVault = await votingReward.baseVault()
       const actualRewardVault = await votingReward.rewardsVault()
       const actualRewardToken = await votingReward.rewardsToken()
+      const actualEpochDuration = await votingReward.epochDuration()
+      const actualLockTime = await votingReward.lockTime()
+      const actualMissingVotesThreeshold = await votingReward.missingVotesThreeshold()
 
       assert.strictEqual(actualVoting, voting.address)
       assert.strictEqual(actualBaseVault, baseVault.address)
       assert.strictEqual(actualRewardVault, rewardsVault.address)
       assert.strictEqual(actualRewardToken, rewardsToken.address)
+      assert.strictEqual(parseInt(actualEpochDuration), EPOCH)
+      assert.strictEqual(parseInt(actualLockTime), LOCK_TIME)
+      assert.strictEqual(
+        parseInt(actualMissingVotesThreeshold),
+        MISSING_VOTES_THREESHOLD
+      )
     })
 
-    it('Should set able to change baseVault, rewardsVault voting and minimun seconds', async () => {
+    it('Should set able to change baseVault, rewardsVault, voting, epochDuration, percentageReward, lockTime and missingVotesThreeshold', async () => {
       await setPermission(
         acl,
         appManager,
         votingReward.address,
-        CHANGE_EPOCH_ROLE,
+        CHANGE_EPOCH_DURATION_ROLE,
         appManager
       )
 
@@ -260,7 +317,23 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         appManager
       )
 
-      await votingReward.changeEpoch(EPOCH + ONE_DAY, {
+      await setPermission(
+        acl,
+        appManager,
+        votingReward.address,
+        CHANGE_LOCK_TIME_ROLE,
+        appManager
+      )
+
+      await setPermission(
+        acl,
+        appManager,
+        votingReward.address,
+        CHANGE_MISSING_VOTES_THREESHOLD_ROLE,
+        appManager
+      )
+
+      await votingReward.changeEpochDuration(EPOCH + ONE_DAY, {
         from: appManager,
       })
 
@@ -276,6 +349,17 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         from: appManager,
       })
 
+      await votingReward.changeLockTime(LOCK_TIME + 1, {
+        from: appManager,
+      })
+
+      await votingReward.changeMissingVotesThreeshold(
+        MISSING_VOTES_THREESHOLD + 1,
+        {
+          from: appManager,
+        }
+      )
+
       await votingReward.changePercentageReward(PERCENTAGE_REWARD + 1, {
         from: appManager,
       })
@@ -287,17 +371,24 @@ contract('VotingReward', ([appManager, ...accounts]) => {
       const actualPercentageReward = parseInt(
         await votingReward.percentageReward()
       )
+      const actualLockTime = await votingReward.lockTime()
+      const actualMissingVotesThreeshold = await votingReward.missingVotesThreeshold()
 
       assert.strictEqual(actualBaseVault, rewardsVault.address)
       assert.strictEqual(actualRewardVault, baseVault.address)
       assert.strictEqual(actualVoting, baseVault.address)
       assert.strictEqual(actualEpochDuration, EPOCH + ONE_DAY)
       assert.strictEqual(actualPercentageReward, PERCENTAGE_REWARD + 1)
+      assert.strictEqual(parseInt(actualLockTime), LOCK_TIME + 1)
+      assert.strictEqual(
+        parseInt(actualMissingVotesThreeshold),
+        MISSING_VOTES_THREESHOLD + 1
+      )
     })
 
     it('Should not be able to set epoch because of no permission', async () => {
       await assertRevert(
-        votingReward.changeEpoch(EPOCH, {
+        votingReward.changeEpochDuration(EPOCH, {
           from: appManager,
         }),
         'APP_AUTH_FAILED'
@@ -334,6 +425,24 @@ contract('VotingReward', ([appManager, ...accounts]) => {
     it('Should not be able to set a new Percentage Reward because of no permission', async () => {
       await assertRevert(
         votingReward.changePercentageReward(PERCENTAGE_REWARD, {
+          from: appManager,
+        }),
+        'APP_AUTH_FAILED'
+      )
+    })
+
+    it('Should not be able to set a new lock time because of no permission', async () => {
+      await assertRevert(
+        votingReward.changeLockTime(LOCK_TIME, {
+          from: appManager,
+        }),
+        'APP_AUTH_FAILED'
+      )
+    })
+
+    it('Should not be able to set a new missing votes threeshold because of no permission', async () => {
+      await assertRevert(
+        votingReward.changeMissingVotesThreeshold(MISSING_VOTES_THREESHOLD, {
           from: appManager,
         }),
         'APP_AUTH_FAILED'
@@ -476,8 +585,12 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         const numVotes = 10
         const claimStart = await now()
 
-        const expectedReward =
-          await getTotalReward(accounts, miniMeToken, PERCENTAGE_REWARD, numVotes)
+        const expectedReward = await getTotalReward(
+          accounts,
+          miniMeToken,
+          PERCENTAGE_REWARD,
+          numVotes
+        )
 
         for (let voteId = 0; voteId < numVotes; voteId++) {
           await newVote(
@@ -532,7 +645,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
         await assertRevert(
           openClaimForEpoch(votingReward, claimStart, appManager),
-          'ERROR_EPOCH_CLAIM_ALREADY_OPENED'
+          'VOTING_REWARD_ERROR_EPOCH_CLAIM_ALREADY_OPENED'
         )
       })
 
@@ -564,19 +677,27 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
       })
 
+      it('Should not be possible open a claim 2 times in the same epoch', async () => {
+        await timeTravel(EPOCH)
+        await openClaimForEpoch(votingReward, await now(), appManager)
+        await closeClaimForCurrentEpoch(votingReward, appManager)
+        await assertRevert(
+          openClaimForEpoch(votingReward, await now(), appManager),
+          'VOTING_REWARD_ERROR_EPOCH'
+        )
+      })
+
       it('Should handle correctly the number of epochs', async () => {
         const numberOfEpochs = 50
         for (let epoch = 0; epoch < numberOfEpochs; epoch++) {
+          await timeTravel(EPOCH)
           const claimStart = await now()
           await openClaimForEpoch(votingReward, claimStart, appManager)
           // distributing reward...
           await closeClaimForCurrentEpoch(votingReward, appManager)
 
           const currentEpoch = (await votingReward.currentEpoch()).toString()
-          assert.strictEqual(
-            parseInt(currentEpoch),
-            epoch + 1
-          )
+          assert.strictEqual(parseInt(currentEpoch), epoch + 1)
         }
       })
     })
