@@ -17,7 +17,11 @@ contract VotingReward is AragonApp {
     using SafeMath64 for uint64;
 
     // prettier-ignore
-    bytes32 public constant CHANGE_EPOCH_ROLE = keccak256("CHANGE_EPOCH_ROLE");
+    bytes32 public constant CHANGE_EPOCH_DURATION_ROLE = keccak256("CHANGE_EPOCH_DURATION_ROLE");
+    // prettier-ignore
+    bytes32 public constant CHANGE_MISSING_VOTES_THREESHOLD_ROLE = keccak256("CHANGE_MISSING_VOTES_THREESHOLD_ROLE");
+    // prettier-ignore
+    bytes32 public constant CHANGE_LOCK_TIME_ROLE = keccak256("CHANGE_LOCK_TIME_ROLE");
     // prettier-ignore
     bytes32 public constant OPEN_CLAIM_EPOCH_ROLE = keccak256("OPEN_CLAIM_EPOCH_ROLE");
     // prettier-ignore
@@ -33,8 +37,6 @@ contract VotingReward is AragonApp {
 
     // prettier-ignore
     string private constant ERROR_ADDRESS_NOT_CONTRACT = "VOTING_REWARD_ADDRESS_NOT_CONTRACT";
-    // prettier-ignore
-    string private constant ERROR_EPOCH_NOT_ZERO = "VOTING_EPOCH_NOT_ZERO";
     // prettier-ignore
     string private constant ERROR_VAULT_INSUFFICENT_TOKENS = "VOTING_REWARD_VAULT_INSUFFICENT_TOKENS";
     // prettier-ignore
@@ -52,7 +54,9 @@ contract VotingReward is AragonApp {
     // prettier-ignore
     string private constant ERROR_EPOCH_CLAIM_NOT_OPENED = "VOTING_REWARD_CLAIM_NOT_OPENED";
     // prettier-ignore
-    string private constant ERROR_EPOCH_CLAIM_ALREADY_OPENED = "ERROR_EPOCH_CLAIM_ALREADY_OPENED";
+    string private constant ERROR_EPOCH_CLAIM_ALREADY_OPENED = "VOTING_REWARD_ERROR_EPOCH_CLAIM_ALREADY_OPENED";
+    // prettier-ignore
+    string private constant ERROR_WRONG_VALUE = "VOTING_REWARD_WRONG_VALUE";
 
     /*enum LockState {Unwithdrawn, Withdrawn}
 
@@ -68,12 +72,14 @@ contract VotingReward is AragonApp {
 
     address public rewardsToken;
     uint256 public percentageReward;
+    uint256 public missingVotesThreeshold;
 
     uint64 public epochDuration;
     uint64 public currentEpoch;
     uint64 private deployDate;
     uint64 public claimStart;
     uint64 public lastClaimDate;
+    uint64 public lockTime;
 
     bool public isClaimOpened;
 
@@ -85,6 +91,8 @@ contract VotingReward is AragonApp {
     event PercentageRewardChanged(uint256 percentageReward);
     event RewardDistributed(address beneficiary, uint256 amount);
     event EpochDurationChanged(uint64 epoch);
+    event MissingVoteThreesholdChanged(uint256 amount);
+    event LockTimeChanged(uint64 amount);
     event ClaimEpochOpened(uint64 start, uint64 end);
     event ClaimEpochClosed(uint64 date);
 
@@ -96,6 +104,8 @@ contract VotingReward is AragonApp {
      * @param _rewardsToken Accepted token address
      * @param _epochDuration number of seconds minimun to have access to voting rewards
      * @param _percentageReward percentage of a reward
+     * @param _lockTime number of seconds for which token will be locked after colleting reward
+     * @param _missingVotesThreeshold number of missing votes allowed in an epoch
      */
     function initialize(
         address _baseVault,
@@ -103,7 +113,9 @@ contract VotingReward is AragonApp {
         address _voting,
         address _rewardsToken,
         uint64 _epochDuration,
-        uint256 _percentageReward
+        uint256 _percentageReward,
+        uint64 _lockTime,
+        uint256 _missingVotesThreeshold
     ) external onlyInit {
         require(isContract(_baseVault), ERROR_ADDRESS_NOT_CONTRACT);
         require(isContract(_rewardsVault), ERROR_ADDRESS_NOT_CONTRACT);
@@ -113,6 +125,8 @@ contract VotingReward is AragonApp {
             percentageReward >= 0 && _percentageReward <= 100,
             ERROR_PERCENTAGE_REWARD
         );
+        require(_lockTime >= 0, ERROR_WRONG_VALUE);
+        require(_missingVotesThreeshold >= 0, ERROR_WRONG_VALUE);
 
         baseVault = Vault(_baseVault);
         rewardsVault = Vault(_rewardsVault);
@@ -120,6 +134,8 @@ contract VotingReward is AragonApp {
         rewardsToken = _rewardsToken;
         epochDuration = _epochDuration;
         percentageReward = _percentageReward;
+        missingVotesThreeshold = _missingVotesThreeshold;
+        lockTime = _lockTime;
 
         deployDate = getTimestamp64();
         lastClaimDate = getTimestamp64();
@@ -138,6 +154,7 @@ contract VotingReward is AragonApp {
     {
         require(!isClaimOpened, ERROR_EPOCH_CLAIM_ALREADY_OPENED);
         require(_claimStart >= lastClaimDate, ERROR_EPOCH);
+        require(getTimestamp64() - lastClaimDate >= epochDuration, ERROR_EPOCH);
 
         claimStart = _claimStart;
         isClaimOpened = true;
@@ -158,6 +175,7 @@ contract VotingReward is AragonApp {
     /**
      * @notice collect rewards for a list of address
      * @param _beneficiaries address that are looking for reward
+     * @dev this function should be called from outside each _epochDuration seconds
      */
     function collectRewards(address[] _beneficiaries)
         external
@@ -175,14 +193,42 @@ contract VotingReward is AragonApp {
      * @notice Change minimum number of seconds to claim voting rewards
      * @param _epochDuration number of seconds minimun to claim access to voting rewards
      */
-    function changeEpoch(uint64 _epochDuration)
+    function changeEpochDuration(uint64 _epochDuration)
         external
-        auth(CHANGE_EPOCH_ROLE)
+        auth(CHANGE_EPOCH_DURATION_ROLE)
     {
-        require(_epochDuration > 0, ERROR_EPOCH_NOT_ZERO);
+        require(_epochDuration > 0, ERROR_WRONG_VALUE);
         epochDuration = _epochDuration;
 
         emit EpochDurationChanged(_epochDuration);
+    }
+
+    /**
+     * @notice Change minimum number of missing votes allowed
+     * @param _missingVotesThreeshold number of seconds minimun to claim access to voting rewards
+     */
+    function changeMissingVotesThreeshold(uint256 _missingVotesThreeshold)
+        external
+        auth(CHANGE_MISSING_VOTES_THREESHOLD_ROLE)
+    {
+        require(_missingVotesThreeshold >= 0, ERROR_WRONG_VALUE);
+        missingVotesThreeshold = _missingVotesThreeshold;
+
+        emit MissingVoteThreesholdChanged(_missingVotesThreeshold);
+    }
+
+    /**
+     * @notice Change minimum number of missing votes allowed
+     * @param _lockTime number of seconds for wich tokens will be locked after collecting reward
+     */
+    function changeLockTime(uint64 _lockTime)
+        external
+        auth(CHANGE_LOCK_TIME_ROLE)
+    {
+        require(_lockTime >= 0, ERROR_WRONG_VALUE);
+        lockTime = _lockTime;
+
+        emit MissingVoteThreesholdChanged(_lockTime);
     }
 
     /**
@@ -250,7 +296,7 @@ contract VotingReward is AragonApp {
         public
         auth(COLLECT_REWARDS_ROLE)
     {
-        //require(isClaimOpened, ERROR_EPOCH_CLAIM_NOT_OPENED);
+        require(isClaimOpened, ERROR_EPOCH_CLAIM_NOT_OPENED);
 
         uint64 lastDateClaimedReward = 0;
         if (lastDateClaimedRewards[_beneficiary] != 0) {
@@ -270,7 +316,7 @@ contract VotingReward is AragonApp {
             _beneficiary,
             claimStart,
             claimEnd,
-            1
+            missingVotesThreeshold
         );
 
         uint256 reward = _calculatePercentage(
