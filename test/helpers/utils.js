@@ -12,7 +12,7 @@ const vote = (_voting, _voteId, _from) =>
     from: _from,
   })
 
-const collectRewards = async (_votingReward, _beneficiaries, _appManager) => {
+const collectRewardsForAll = async (_votingReward, _beneficiaries, _appManager) => {
   const interval = 10
   const chunksLength = Math.floor(_beneficiaries.length / interval)
   const remainder = _beneficiaries.length % interval
@@ -21,13 +21,13 @@ const collectRewards = async (_votingReward, _beneficiaries, _appManager) => {
     const from = chunk * interval
     const to = chunk * interval + interval
 
-    await _votingReward.collectRewards(_beneficiaries.slice(from, to), {
+    await _votingReward.collectRewardsForAll(_beneficiaries.slice(from, to), {
       from: _appManager,
       gas: 9500000,
     })
   }
 
-  await _votingReward.collectRewards(
+  await _votingReward.collectRewardsForAll(
     _beneficiaries.slice(
       _beneficiaries.length - remainder,
       _beneficiaries.length
@@ -39,8 +39,35 @@ const collectRewards = async (_votingReward, _beneficiaries, _appManager) => {
   )
 }
 
-const collectForAddress = (_votingReward, _beneficiary, _appManager) =>
-  _votingReward.collectForAddress(_beneficiary, {
+const distributeRewardsForAll = async (_votingReward, _beneficiaries, _appManager) => {
+  const interval = 10
+  const chunksLength = Math.floor(_beneficiaries.length / interval)
+  const remainder = _beneficiaries.length % interval
+
+  for (let chunk = 0; chunk < chunksLength; chunk++) {
+    const from = chunk * interval
+    const to = chunk * interval + interval
+
+    await _votingReward.distributeRewardsForAll(_beneficiaries.slice(from, to), {
+      from: _appManager,
+      gas: 9500000,
+    })
+  }
+
+  await _votingReward.distributeRewardsForAll(
+    _beneficiaries.slice(
+      _beneficiaries.length - remainder,
+      _beneficiaries.length
+    ),
+    {
+      from: _appManager,
+      gas: 9500000,
+    }
+  )
+}
+
+const collectRewardsFor = (_votingReward, _beneficiary, _appManager) =>
+  _votingReward.collectRewardsFor(_beneficiary, {
     from: _appManager,
   })
 
@@ -76,12 +103,13 @@ const getTotalReward = async (
 }
 
 module.exports = {
-  collectRewards,
+  collectRewardsForAll,
   newVote,
   vote,
   openClaimForEpoch,
   closeClaimForCurrentEpoch,
-  collectForAddress,
+  collectRewardsFor,
   getAccountsBalance,
   getTotalReward,
+  distributeRewardsForAll
 }
