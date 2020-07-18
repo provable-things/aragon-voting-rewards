@@ -478,14 +478,14 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
       })
 
-      it('Should fail because of no permission to collectRewardsForAll rewards', async () => {
+      it('Should fail distributing rewards because of no permission', async () => {
         await assertRevert(
-          collectRewardsForAll(votingReward, [appManager], appManager),
+          distributeRewardsForAll(votingReward, [appManager], appManager),
           'APP_AUTH_FAILED'
         )
       })
 
-      it('Should fail because of not votes', async () => {
+      it('Should fail because of no votes', async () => {
         await setPermission(
           acl,
           appManager,
@@ -495,7 +495,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
 
         await assertRevert(
-          collectRewardsForAll(votingReward, [appManager], appManager),
+          distributeRewardsForAll(votingReward, [appManager], appManager),
           'VOTING_REWARD_VOTING_NO_VOTES'
         )
       })
@@ -524,7 +524,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
 
         await assertRevert(
-          collectRewardsForAll(votingReward, [appManager], appManager),
+          distributeRewardsForAll(votingReward, [appManager], appManager),
           'VOTING_REWARD_CLAIM_NOT_OPENED'
         )
       })
@@ -620,7 +620,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
         await timeTravel(EPOCH)
         await openClaimForEpoch(votingReward, claimStart, appManager)
-        await collectRewardsForAll(votingReward, accounts, appManager, 5)
+        await distributeRewardsForAll(votingReward, accounts, appManager, 5)
         await closeClaimForCurrentEpoch(votingReward, appManager)
 
         // base vault must contain all rewards
@@ -642,7 +642,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         }
 
         await timeTravel(LOCK_TIME)
-        await distributeRewardsForAll(votingReward, accounts, appManager)
+        await collectRewardsForAll(votingReward, accounts, appManager)
 
         const actualBalances = await getAccountsBalance(accounts, rewardsToken)
         for (let account of accounts) {
@@ -684,7 +684,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
         await timeTravel(EPOCH)
         await openClaimForEpoch(votingReward, claimStart, appManager)
-        await collectRewardsForAll(votingReward, accounts, appManager, 5)
+        await distributeRewardsForAll(votingReward, accounts, appManager, 5)
         await closeClaimForCurrentEpoch(votingReward, appManager)
 
         // base vault must contain all rewards
@@ -705,7 +705,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           )
         }
 
-        await distributeRewardsForAll(votingReward, accounts, appManager)
+        await collectRewardsForAll(votingReward, accounts, appManager)
 
         const actualBalances = await getAccountsBalance(accounts, rewardsToken)
         for (let account of accounts) {
@@ -746,7 +746,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         await timeTravel(EPOCH)
 
         await openClaimForEpoch(votingReward, claimStart, appManager)
-        await collectRewardsForAll(votingReward, accounts, appManager, 5)
+        await distributeRewardsForAll(votingReward, accounts, appManager, 5)
         await closeClaimForCurrentEpoch(votingReward, appManager)
 
         claimStart = await now()
@@ -768,7 +768,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         await timeTravel(EPOCH)
 
         await openClaimForEpoch(votingReward, claimStart, appManager)
-        await collectRewardsForAll(votingReward, accounts, appManager, 5)
+        await distributeRewardsForAll(votingReward, accounts, appManager, 5)
         await closeClaimForCurrentEpoch(votingReward, appManager)
 
         // base vault must contain all rewards
@@ -789,9 +789,9 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           )
         }
 
-        // avoid to distribute last collected reward
+        // avoid to collecti last collected reward
         await timeTravel(LOCK_TIME - EPOCH - 1)
-        await distributeRewardsForAll(votingReward, accounts, appManager)
+        await collectRewardsForAll(votingReward, accounts, appManager)
 
         const actualBalances = await getAccountsBalance(accounts, rewardsToken)
         for (let account of accounts) {
@@ -822,7 +822,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
         await timeTravel(EPOCH)
         await openClaimForEpoch(votingReward, claimStart, appManager)
-        await collectRewardsForAll(votingReward, accounts, appManager)
+        await distributeRewardsForAll(votingReward, accounts, appManager)
 
         await assertRevert(
           openClaimForEpoch(votingReward, claimStart, appManager),
@@ -850,10 +850,10 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
         await timeTravel(EPOCH)
         await openClaimForEpoch(votingReward, claimStart, appManager)
-        await collectRewardsForAll(votingReward, accounts, appManager)
+        await distributeRewardsForAll(votingReward, accounts, appManager)
 
         await assertRevert(
-          collectRewardsForAll(votingReward, accounts, appManager),
+          distributeRewardsForAll(votingReward, accounts, appManager),
           'VOTING_REWARD_ERROR_EPOCH'
         )
       })
