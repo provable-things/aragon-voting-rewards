@@ -410,7 +410,6 @@ contract VotingReward is AragonApp {
             uint64 startBlock;
             uint64 snapshotBlock;
             (, , startBlock, , snapshotBlock, , , , , , ) = voting.getVote(
-                //(bool,bool,uint64,uint64,uint64,uint64,uint64,uint256,uint256,uint256,bytes memory)
                 voteId.sub(1)
             );
 
