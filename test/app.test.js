@@ -32,7 +32,7 @@ const SUPPORT_REQUIRED_PCT = '910000000000000000' // 91% (high to facilitate tes
 const MIN_ACCEPTED_QUORUM_PCT = '910000000000000000' // 91% (high to facilitate tests since value is irrilevant)
 const VOTE_TIME = ONE_DAY * 5 // a vote is opened for 5 days
 const EPOCH = ONE_DAY * 15
-const PERCENTAGE_REWARD = 42
+const PERCENTAGE_REWARD = '420000000000000000' // 42 * 100
 const LOCK_TIME = ONE_DAY * 365
 const MISSING_VOTES_THREESHOLD = 1
 
@@ -359,7 +359,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         }
       )
 
-      await votingReward.changePercentageReward(PERCENTAGE_REWARD + 1, {
+      await votingReward.changePercentageReward('100000000000000000', {
         from: appManager,
       })
 
@@ -367,9 +367,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
       const actualRewardVault = await votingReward.rewardsVault()
       const actualVoting = await votingReward.voting()
       const actualEpochDuration = parseInt(await votingReward.epochDuration())
-      const actualPercentageReward = parseInt(
-        await votingReward.percentageReward()
-      )
+      const actualPercentageReward = await votingReward.percentageReward()
       const actualLockTime = await votingReward.lockTime()
       const actualMissingVotesThreeshold = await votingReward.missingVotesThreeshold()
 
@@ -377,7 +375,10 @@ contract('VotingReward', ([appManager, ...accounts]) => {
       assert.strictEqual(actualRewardVault, baseVault.address)
       assert.strictEqual(actualVoting, baseVault.address)
       assert.strictEqual(actualEpochDuration, EPOCH + ONE_DAY)
-      assert.strictEqual(actualPercentageReward, PERCENTAGE_REWARD + 1)
+      assert.strictEqual(
+        actualPercentageReward.toString(),
+        '100000000000000000'
+      )
       assert.strictEqual(parseInt(actualLockTime), LOCK_TIME + 1)
       assert.strictEqual(
         parseInt(actualMissingVotesThreeshold),
@@ -458,7 +459,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
       )
 
       await assertRevert(
-        votingReward.changePercentageReward(101, {
+        votingReward.changePercentageReward('10000000000000000001', {
           from: appManager,
         }),
         'VOTING_REWARD_PERCENTAGE_REWARD'
@@ -660,8 +661,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         const expectedReward = await getTotalReward(
           accounts,
           miniMeToken,
-          PERCENTAGE_REWARD,
-          numVotes
+          PERCENTAGE_REWARD
         )
         // it works because users have the same balance of miniMeToken
         const expectedRewardSingleUser = expectedReward / accounts.length
@@ -724,8 +724,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         const expectedReward = await getTotalReward(
           accounts,
           miniMeToken,
-          PERCENTAGE_REWARD,
-          numVotes
+          PERCENTAGE_REWARD
         )
         // it works because users have the same balance of miniMeToken
         const expectedRewardSingleUser = expectedReward / accounts.length
