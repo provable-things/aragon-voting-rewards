@@ -25,10 +25,13 @@ const distributeRewardsForAll = async (
     const from = chunk * _interval
     const to = chunk * _interval + _interval
 
-    await _votingReward.distributeRewardsForAll(_beneficiaries.slice(from, to), {
-      from: _appManager,
-      gas: 9500000,
-    })
+    await _votingReward.distributeRewardsForAll(
+      _beneficiaries.slice(from, to),
+      {
+        from: _appManager,
+        gas: 9500000,
+      }
+    )
   }
 
   await _votingReward.distributeRewardsForAll(
@@ -56,13 +59,10 @@ const collectRewardsForAll = async (
     const from = chunk * _interval
     const to = chunk * _interval + _interval
 
-    await _votingReward.collectRewardsForAll(
-      _beneficiaries.slice(from, to),
-      {
-        from: _appManager,
-        gas: 9500000,
-      }
-    )
+    await _votingReward.collectRewardsForAll(_beneficiaries.slice(from, to), {
+      from: _appManager,
+      gas: 9500000,
+    })
   }
 
   await _votingReward.collectRewardsForAll(
