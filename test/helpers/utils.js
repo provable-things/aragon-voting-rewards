@@ -3,12 +3,12 @@ const { encodeCallScript } = require('@aragon/test-helpers/evmScript')
 const newVote = (_voting, _to, _callData, _from) => {
   const action = { to: _to, calldata: _callData }
   const script = encodeCallScript([action])
-  return _voting.newVoteExt(script, '', false, false, { from: _from })
+  return _voting.newVoteExt(script, '', false, { from: _from })
 }
 
 // NOTE: _supports and _executesIfDecided hardcoded to true as they don't matter in this case
 const vote = (_voting, _voteId, _from) =>
-  _voting.vote(_voteId, true, true, {
+  _voting.vote(_voteId, true, {
     from: _from,
   })
 
@@ -82,13 +82,13 @@ const distributeRewardsFor = (_votingReward, _beneficiary, _appManager) =>
     from: _appManager,
   })
 
-const openClaimForEpoch = (_votingReward, _startFrom, _appManager) =>
-  _votingReward.openClaimForEpoch(_startFrom, {
+const openDistributionForEpoch = (_votingReward, _startFrom, _appManager) =>
+  _votingReward.openDistributionForEpoch(_startFrom, {
     from: _appManager,
   })
 
-const closeClaimForCurrentEpoch = (_votingReward, _appManager) =>
-  _votingReward.closeClaimForCurrentEpoch({
+const closeDistributionForCurrentEpoch = (_votingReward, _appManager) =>
+  _votingReward.closeDistributionForCurrentEpoch({
     from: _appManager,
   })
 
@@ -119,8 +119,8 @@ module.exports = {
   collectRewardsForAll,
   newVote,
   vote,
-  openClaimForEpoch,
-  closeClaimForCurrentEpoch,
+  openDistributionForEpoch,
+  closeDistributionForCurrentEpoch,
   distributeRewardsFor,
   getAccountsBalance,
   getTotalReward,

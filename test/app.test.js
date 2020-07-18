@@ -2,13 +2,13 @@ const { assert } = require('chai')
 const { assertRevert } = require('@aragon/contract-test-helpers/assertThrow')
 const { newDao, newApp } = require('./helpers/dao')
 const { setPermission, setOpenPermission } = require('./helpers/permissions')
-const { timeTravel, now } = require('./helpers/time-travel')
+const { now, mineBlocks } = require('./helpers/time-travel')
 const {
   collectRewardsForAll,
   newVote,
   vote,
-  openClaimForEpoch,
-  closeClaimForCurrentEpoch,
+  openDistributionForEpoch,
+  closeDistributionForCurrentEpoch,
   getAccountsBalance,
   getTotalReward,
   distributeRewardsForAll,
@@ -26,17 +26,19 @@ const { hash: nameHash } = require('eth-ens-namehash')
 const ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
 const MOCK_TOKEN_BALANCE = '10000000000000000000000000'
 const MINIME_TOKEN_BALANCE = 100000
-const ONE_HOURS = 3600
-const ONE_DAY = 86400
-const SUPPORT_REQUIRED_PCT = '910000000000000000' // 91% (high to facilitate tests since the value is irrilevant
-const MIN_ACCEPTED_QUORUM_PCT = '910000000000000000' // 91% (high to facilitate tests since the value is irrilevant
-const VOTE_TIME = ONE_DAY * 5 // a vote is opened for 5 days
-const EPOCH = ONE_DAY * 15
+const ONE_BLOCK = 15
+const ONE_MINUTE_BLOCK = 4 // 60 / 15 where 15 is block time
+const ONE_DAY_BLOCKS = 5760 // 86400 / 15 where 15 is block time
+const EPOCH_BLOCKS = ONE_MINUTE_BLOCK * 5
 const PERCENTAGE_REWARD = '420000000000000000' // 42 * 100
-const LOCK_TIME = ONE_DAY * 365
+const LOCK_TIME_BLOCKS = ONE_MINUTE_BLOCK * 10
 const MISSING_VOTES_THREESHOLD = 1
 const LOCKED = 0
 const DISTRIBUTED = 1
+const SUPPORT_REQUIRED_PCT = '910000000000000000' // 91% (high to facilitate tests since the value is irrilevant
+const MIN_ACCEPTED_QUORUM_PCT = '910000000000000000' // 91% (high to facilitate tests since the value is irrilevant
+const DURATION_BLOCKS = ONE_DAY_BLOCKS * 5
+const BUFFER_BLOCKS = 5
 
 contract('VotingReward', ([appManager, ...accounts]) => {
   let miniMeToken,
@@ -143,7 +145,9 @@ contract('VotingReward', ([appManager, ...accounts]) => {
       miniMeToken.address,
       SUPPORT_REQUIRED_PCT,
       MIN_ACCEPTED_QUORUM_PCT,
-      VOTE_TIME
+      DURATION_BLOCKS,
+      BUFFER_BLOCKS,
+      0
     )
 
     rewardsToken = await MockErc20.new(baseVault.address, MOCK_TOKEN_BALANCE)
@@ -162,9 +166,9 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           rewardsVault.address,
           voting.address,
           ETH_ADDRESS,
-          ONE_DAY,
+          EPOCH_BLOCKS,
           PERCENTAGE_REWARD,
-          LOCK_TIME,
+          LOCK_TIME_BLOCKS,
           MISSING_VOTES_THREESHOLD
         ),
         'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
@@ -178,9 +182,9 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           NOT_CONTRACT,
           voting.address,
           ETH_ADDRESS,
-          ONE_DAY,
+          EPOCH_BLOCKS,
           PERCENTAGE_REWARD,
-          LOCK_TIME,
+          LOCK_TIME_BLOCKS,
           MISSING_VOTES_THREESHOLD
         ),
         'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
@@ -194,9 +198,9 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           rewardsVault.address,
           NOT_CONTRACT,
           ETH_ADDRESS,
-          ONE_DAY,
+          EPOCH_BLOCKS,
           PERCENTAGE_REWARD,
-          LOCK_TIME,
+          LOCK_TIME_BLOCKS,
           MISSING_VOTES_THREESHOLD
         ),
         'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
@@ -210,9 +214,9 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           rewardsVault.address,
           voting.address,
           NOT_CONTRACT,
-          ONE_DAY,
+          EPOCH_BLOCKS,
           PERCENTAGE_REWARD,
-          LOCK_TIME,
+          LOCK_TIME_BLOCKS,
           MISSING_VOTES_THREESHOLD
         ),
         'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
@@ -226,7 +230,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           rewardsVault.address,
           voting.address,
           NOT_CONTRACT,
-          ONE_DAY,
+          EPOCH_BLOCKS,
           PERCENTAGE_REWARD,
           -1,
           MISSING_VOTES_THREESHOLD
@@ -242,9 +246,9 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           rewardsVault.address,
           voting.address,
           NOT_CONTRACT,
-          ONE_DAY,
+          EPOCH_BLOCKS,
           PERCENTAGE_REWARD,
-          LOCK_TIME,
+          LOCK_TIME_BLOCKS,
           -1
         ),
         'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
@@ -259,9 +263,9 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         rewardsVault.address,
         voting.address,
         rewardsToken.address,
-        EPOCH,
+        EPOCH_BLOCKS,
         PERCENTAGE_REWARD,
-        LOCK_TIME,
+        LOCK_TIME_BLOCKS,
         MISSING_VOTES_THREESHOLD
       )
     })
@@ -279,8 +283,8 @@ contract('VotingReward', ([appManager, ...accounts]) => {
       assert.strictEqual(actualBaseVault, baseVault.address)
       assert.strictEqual(actualRewardVault, rewardsVault.address)
       assert.strictEqual(actualRewardToken, rewardsToken.address)
-      assert.strictEqual(parseInt(actualEpochDuration), EPOCH)
-      assert.strictEqual(parseInt(actualLockTime), LOCK_TIME)
+      assert.strictEqual(parseInt(actualEpochDuration), EPOCH_BLOCKS)
+      assert.strictEqual(parseInt(actualLockTime), LOCK_TIME_BLOCKS)
       assert.strictEqual(
         parseInt(actualMissingVotesThreeshold),
         MISSING_VOTES_THREESHOLD
@@ -336,7 +340,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         appManager
       )
 
-      await votingReward.changeEpochDuration(EPOCH + ONE_DAY, {
+      await votingReward.changeEpochDuration(EPOCH_BLOCKS + ONE_DAY_BLOCKS, {
         from: appManager,
       })
 
@@ -352,7 +356,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         from: appManager,
       })
 
-      await votingReward.changeLockTime(LOCK_TIME + 1, {
+      await votingReward.changeLockTime(LOCK_TIME_BLOCKS + 15, {
         from: appManager,
       })
 
@@ -378,12 +382,12 @@ contract('VotingReward', ([appManager, ...accounts]) => {
       assert.strictEqual(actualBaseVault, rewardsVault.address)
       assert.strictEqual(actualRewardVault, baseVault.address)
       assert.strictEqual(actualVoting, baseVault.address)
-      assert.strictEqual(actualEpochDuration, EPOCH + ONE_DAY)
+      assert.strictEqual(actualEpochDuration, EPOCH_BLOCKS + ONE_DAY_BLOCKS)
       assert.strictEqual(
         actualPercentageReward.toString(),
         '100000000000000000'
       )
-      assert.strictEqual(parseInt(actualLockTime), LOCK_TIME + 1)
+      assert.strictEqual(parseInt(actualLockTime), LOCK_TIME_BLOCKS + 15)
       assert.strictEqual(
         parseInt(actualMissingVotesThreeshold),
         MISSING_VOTES_THREESHOLD + 1
@@ -392,7 +396,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
     it('Should not be able to set epoch because of no permission', async () => {
       await assertRevert(
-        votingReward.changeEpochDuration(EPOCH, {
+        votingReward.changeEpochDuration(EPOCH_BLOCKS, {
           from: appManager,
         }),
         'APP_AUTH_FAILED'
@@ -437,7 +441,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
     it('Should not be able to set a new lock time because of no permission', async () => {
       await assertRevert(
-        votingReward.changeLockTime(LOCK_TIME, {
+        votingReward.changeLockTime(LOCK_TIME_BLOCKS, {
           from: appManager,
         }),
         'APP_AUTH_FAILED'
@@ -504,14 +508,14 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
       })
 
-      it('Should fail on opening a claim for an epoch because no permission', async () => {
+      it('Should fail on opening a distribition for an epoch because no permission', async () => {
         await assertRevert(
-          openClaimForEpoch(votingReward, 10, appManager),
+          openDistributionForEpoch(votingReward, 10, appManager),
           'APP_AUTH_FAILED'
         )
       })
 
-      it('Should fail because it is not possible to claim for an epoch is closed', async () => {
+      it('Should fail because it is not possible to distribition for an epoch is closed', async () => {
         await setPermission(
           acl,
           appManager,
@@ -579,10 +583,10 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
       })
 
-      it('Should not be able to open a claim because claimStart is less than last claim', async () => {
+      it('Should not be able to open a distribition because fromBlock is less than last distribition', async () => {
         const numVotes = 10
-        const claimStart = await now()
-        for (let voteId = 0; voteId < numVotes; voteId++) {
+        const fromBlock = await now()
+        for (let voteId = 1; voteId <= numVotes; voteId++) {
           await newVote(
             voting,
             executionTarget.address,
@@ -591,19 +595,22 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           )
 
           for (let account of accounts) {
-            await timeTravel(ONE_HOURS / 5)
             await vote(voting, voteId, account)
           }
         }
         await assertRevert(
-          openClaimForEpoch(votingReward, claimStart - EPOCH, appManager),
+          openDistributionForEpoch(
+            votingReward,
+            fromBlock - EPOCH_BLOCKS,
+            appManager
+          ),
           'VOTING_REWARD_ERROR_EPOCH'
         )
       })
 
       it('Should be able to collect and distribute rewards for who partecipated actively in voting', async () => {
         const numVotes = 10
-        const claimStart = await now()
+        const fromBlock = await now()
 
         const intialBalances = await getAccountsBalance(accounts, rewardsToken)
         const expectedReward = await getTotalReward(
@@ -614,7 +621,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         // it works because users have the same balance of miniMeToken
         const expectedRewardSingleUser = expectedReward / accounts.length
 
-        for (let voteId = 0; voteId < numVotes; voteId++) {
+        for (let voteId = 1; voteId <= numVotes; voteId++) {
           await newVote(
             voting,
             executionTarget.address,
@@ -623,17 +630,18 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           )
 
           for (let account of accounts) {
-            await timeTravel(ONE_HOURS)
+            await mineBlocks(ONE_BLOCK)
             await vote(voting, voteId, account)
             // in order (if works) to have the minimun equal to expectedReward since balance increase
             await miniMeToken.generateTokens(account, 10)
           }
         }
 
-        await timeTravel(EPOCH)
-        await openClaimForEpoch(votingReward, claimStart, appManager)
+        await mineBlocks(EPOCH_BLOCKS)
+        await openDistributionForEpoch(votingReward, fromBlock, appManager)
+
         await distributeRewardsForAll(votingReward, accounts, appManager, 5)
-        await closeClaimForCurrentEpoch(votingReward, appManager)
+        await closeDistributionForCurrentEpoch(votingReward, appManager)
 
         // base vault must contain all rewards
         const actualVaultBalance = await rewardsToken.balanceOf(
@@ -653,7 +661,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           )
         }
 
-        await timeTravel(LOCK_TIME)
+        await mineBlocks(LOCK_TIME_BLOCKS)
         await collectRewardsForAll(votingReward, accounts, appManager)
 
         const actualBalances = await getAccountsBalance(accounts, rewardsToken)
@@ -663,11 +671,11 @@ contract('VotingReward', ([appManager, ...accounts]) => {
             parseInt(intialBalances[account]) + expectedRewardSingleUser
           )
         }
-      })
+      }).timeout(200000)
 
-      it('Should be able to collect rewards but not distributing for who partecipated actively in voting because a LOCK_TIME period is not passed,', async () => {
+      it('Should be able to collect rewards but not distributing for who partecipated actively in voting because a LOCK_TIME_BLOCKS period is not passed,', async () => {
         const numVotes = 10
-        const claimStart = await now()
+        const fromBlock = await now()
 
         const intialBalances = await getAccountsBalance(accounts, rewardsToken)
         const expectedReward = await getTotalReward(
@@ -678,7 +686,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         // it works because users have the same balance of miniMeToken
         const expectedRewardSingleUser = expectedReward / accounts.length
 
-        for (let voteId = 0; voteId < numVotes; voteId++) {
+        for (let voteId = 1; voteId <= numVotes; voteId++) {
           await newVote(
             voting,
             executionTarget.address,
@@ -687,17 +695,17 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           )
 
           for (let account of accounts) {
-            await timeTravel(ONE_HOURS)
+            await mineBlocks(ONE_BLOCK)
             await vote(voting, voteId, account)
             // in order (if works) to have the minimun equal to expectedReward since balance increase
             await miniMeToken.generateTokens(account, 10)
           }
         }
 
-        await timeTravel(EPOCH)
-        await openClaimForEpoch(votingReward, claimStart, appManager)
+        await mineBlocks(EPOCH_BLOCKS)
+        await openDistributionForEpoch(votingReward, fromBlock, appManager)
         await distributeRewardsForAll(votingReward, accounts, appManager, 5)
-        await closeClaimForCurrentEpoch(votingReward, appManager)
+        await closeDistributionForCurrentEpoch(votingReward, appManager)
 
         // base vault must contain all rewards
         const actualVaultBalance = await rewardsToken.balanceOf(
@@ -726,11 +734,11 @@ contract('VotingReward', ([appManager, ...accounts]) => {
             parseInt(intialBalances[account])
           )
         }
-      })
+      }).timeout(200000)
 
-      it('Should be able to collect but not distribute all rewards (only tot/2)', async () => {
+      it('Should be able to distribute but not collecting all rewards (only tot/2)', async () => {
         const numVotes = 10
-        let claimStart = await now()
+        let fromBlock = await now()
 
         const intialBalances = await getAccountsBalance(accounts, rewardsToken)
         const expectedReward = await getTotalReward(
@@ -741,7 +749,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         // it works because users have the same balance of miniMeToken
         const expectedRewardSingleUser = expectedReward / accounts.length
 
-        for (let voteId = 0; voteId < numVotes; voteId++) {
+        for (let voteId = 1; voteId <= numVotes; voteId++) {
           await newVote(
             voting,
             executionTarget.address,
@@ -750,20 +758,20 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           )
 
           for (let account of accounts) {
-            await timeTravel(ONE_HOURS)
+            await mineBlocks(ONE_BLOCK)
             await vote(voting, voteId, account)
           }
         }
 
-        await timeTravel(EPOCH)
-
-        await openClaimForEpoch(votingReward, claimStart, appManager)
+        await mineBlocks(EPOCH_BLOCKS)
+        await openDistributionForEpoch(votingReward, fromBlock, appManager)
         await distributeRewardsForAll(votingReward, accounts, appManager, 5)
-        await closeClaimForCurrentEpoch(votingReward, appManager)
+        await closeDistributionForCurrentEpoch(votingReward, appManager)
 
-        claimStart = await now()
+        await mineBlocks(ONE_BLOCK)
+        fromBlock = await now()
 
-        for (let voteId = numVotes; voteId < numVotes * 2; voteId++) {
+        for (let voteId = numVotes + 1; voteId <= numVotes * 2; voteId++) {
           await newVote(
             voting,
             executionTarget.address,
@@ -772,15 +780,15 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           )
 
           for (let account of accounts) {
-            await timeTravel(ONE_HOURS)
+            await mineBlocks(ONE_BLOCK)
             await vote(voting, voteId, account)
           }
         }
 
-        await timeTravel(EPOCH)
-        await openClaimForEpoch(votingReward, claimStart, appManager)
+        await mineBlocks(EPOCH_BLOCKS)
+        await openDistributionForEpoch(votingReward, fromBlock, appManager)
         await distributeRewardsForAll(votingReward, accounts, appManager, 5)
-        await closeClaimForCurrentEpoch(votingReward, appManager)
+        await closeDistributionForCurrentEpoch(votingReward, appManager)
 
         // base vault must contain all rewards
         const actualVaultBalance = await rewardsToken.balanceOf(
@@ -800,8 +808,8 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           )
         }
 
-        // avoid to collecting last collected reward
-        await timeTravel(LOCK_TIME - EPOCH - 1)
+        // avoid collecting last collected reward
+        await mineBlocks(LOCK_TIME_BLOCKS - EPOCH_BLOCKS - 1)
         await collectRewardsForAll(votingReward, accounts, appManager)
 
         const actualBalances = await getAccountsBalance(accounts, rewardsToken)
@@ -811,13 +819,13 @@ contract('VotingReward', ([appManager, ...accounts]) => {
             parseInt(intialBalances[account]) + expectedRewardSingleUser
           )
         }
-      }).timeout(50000)
+      }).timeout(500000)
 
-      it('Should not be able to open a claim if there is another one opened', async () => {
+      it('Should not be able to open a distribition if there is another one opened', async () => {
         const numVotes = 10
-        const claimStart = await now()
+        const fromBlock = await now()
 
-        for (let voteId = 0; voteId < numVotes; voteId++) {
+        for (let voteId = 1; voteId <= numVotes; voteId++) {
           await newVote(
             voting,
             executionTarget.address,
@@ -826,26 +834,26 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           )
 
           for (let account of accounts) {
-            await timeTravel(ONE_HOURS)
+            await mineBlocks(ONE_BLOCK)
             await vote(voting, voteId, account)
           }
         }
 
-        await timeTravel(EPOCH)
-        await openClaimForEpoch(votingReward, claimStart, appManager)
+        await mineBlocks(EPOCH_BLOCKS)
+        await openDistributionForEpoch(votingReward, fromBlock, appManager)
         await distributeRewardsForAll(votingReward, accounts, appManager)
 
         await assertRevert(
-          openClaimForEpoch(votingReward, claimStart, appManager),
+          openDistributionForEpoch(votingReward, fromBlock, appManager),
           'VOTING_REWARD_EPOCH_DISTRIBUTION_ALREADY_OPENED'
         )
-      })
+      }).timeout(50000)
 
       it('Should not be able to collect rewards 2 times in the same epoch', async () => {
         const numVotes = 10
-        const claimStart = await now()
+        const fromBlock = await now()
 
-        for (let voteId = 0; voteId < numVotes; voteId++) {
+        for (let voteId = 1; voteId <= numVotes; voteId++) {
           await newVote(
             voting,
             executionTarget.address,
@@ -854,13 +862,13 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           )
 
           for (let account of accounts) {
-            await timeTravel(ONE_HOURS)
+            await mineBlocks(ONE_BLOCK)
             await vote(voting, voteId, account)
           }
         }
 
-        await timeTravel(EPOCH)
-        await openClaimForEpoch(votingReward, claimStart, appManager)
+        await mineBlocks(EPOCH_BLOCKS)
+        await openDistributionForEpoch(votingReward, fromBlock, appManager)
         await distributeRewardsForAll(votingReward, accounts, appManager)
 
         await assertRevert(
@@ -869,34 +877,34 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
       })
 
-      it('Should not be possible open a claim 2 times in the same epoch', async () => {
-        await timeTravel(EPOCH)
-        await openClaimForEpoch(votingReward, await now(), appManager)
-        await closeClaimForCurrentEpoch(votingReward, appManager)
+      it('Should not be possible open a distribition 2 times in the same epoch', async () => {
+        await mineBlocks(EPOCH_BLOCKS)
+        await openDistributionForEpoch(votingReward, await now(), appManager)
+        await closeDistributionForCurrentEpoch(votingReward, appManager)
         await assertRevert(
-          openClaimForEpoch(votingReward, await now(), appManager),
+          openDistributionForEpoch(votingReward, await now(), appManager),
           'VOTING_REWARD_ERROR_EPOCH'
         )
-      })
+      }).timeout(20000)
 
       it('Should handle correctly the number of epochs', async () => {
-        const numberOfEpochs = 50
+        const numberOfEpochs = 10
         for (let epoch = 0; epoch < numberOfEpochs; epoch++) {
-          await timeTravel(EPOCH)
-          const claimStart = await now()
-          await openClaimForEpoch(votingReward, claimStart, appManager)
+          await mineBlocks(EPOCH_BLOCKS)
+          const fromBlock = await now()
+          await openDistributionForEpoch(votingReward, fromBlock, appManager)
           // distributing reward...
-          await closeClaimForCurrentEpoch(votingReward, appManager)
+          await closeDistributionForCurrentEpoch(votingReward, appManager)
 
           const currentEpoch = (await votingReward.currentEpoch()).toString()
           assert.strictEqual(parseInt(currentEpoch), epoch + 1)
         }
-      })
+      }).timeout(50000)
 
       it('Should change from Locked to Distributed', async () => {
         const numVotes = 10
-        const claimStart = await now()
-        for (let voteId = 0; voteId < numVotes; voteId++) {
+        const fromBlock = await now()
+        for (let voteId = 1; voteId <= numVotes; voteId++) {
           await newVote(
             voting,
             executionTarget.address,
@@ -905,39 +913,33 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           )
 
           for (let account of accounts) {
-            await timeTravel(ONE_HOURS)
+            await mineBlocks(ONE_BLOCK)
             await vote(voting, voteId, account)
           }
         }
 
-        await timeTravel(EPOCH)
-        await openClaimForEpoch(votingReward, claimStart, appManager)
+        await mineBlocks(EPOCH_BLOCKS)
+        await openDistributionForEpoch(votingReward, fromBlock, appManager)
         await distributeRewardsForAll(votingReward, accounts, appManager, 5)
-        await closeClaimForCurrentEpoch(votingReward, appManager)
+        await closeDistributionForCurrentEpoch(votingReward, appManager)
 
         for (let account of accounts) {
           const rewards = await votingReward.getRewards(account)
           for (let { state } of rewards) {
-            assert.strictEqual(
-              parseInt(state),
-              LOCKED
-            )
+            assert.strictEqual(parseInt(state), LOCKED)
           }
         }
 
-        await timeTravel(LOCK_TIME + EPOCH)
+        await mineBlocks(EPOCH_BLOCKS + LOCK_TIME_BLOCKS)
         await collectRewardsForAll(votingReward, accounts, appManager)
 
         for (let account of accounts) {
           const rewards = await votingReward.getRewards(account)
           for (let { state } of rewards) {
-            assert.strictEqual(
-              parseInt(state),
-              DISTRIBUTED
-            )
+            assert.strictEqual(parseInt(state), DISTRIBUTED)
           }
         }
-      })
+      }).timeout(50000)
     })
   })
 })
