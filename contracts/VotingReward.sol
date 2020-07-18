@@ -175,7 +175,7 @@ contract VotingReward is AragonApp {
      * @param _beneficiaries address that are looking for reward
      * @dev this function should be called from outside each _epochDuration seconds
      */
-    function collectRewardsForAll(address[] _beneficiaries)
+    function distributeRewardsForAll(address[] _beneficiaries)
         external
         auth(COLLECT_REWARDS_ROLE)
     {
@@ -183,7 +183,7 @@ contract VotingReward is AragonApp {
         require(isClaimOpened, ERROR_EPOCH_CLAIM_NOT_OPENED);
 
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
-            collectRewardsFor(_beneficiaries[i]);
+            distributeRewardsFor(_beneficiaries[i]);
         }
     }
 
@@ -192,9 +192,9 @@ contract VotingReward is AragonApp {
      *         if lockTime is passed since when tokens have been distributed
      * @param _beneficiaries addresses that should be fund with rewards
      */
-    function distributeRewardsForAll(address[] _beneficiaries) external {
+    function collectRewardsForAll(address[] _beneficiaries) external {
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
-            distributeRewardsFor(_beneficiaries[i]);
+            collectRewardsFor(_beneficiaries[i]);
         }
     }
 
@@ -313,7 +313,7 @@ contract VotingReward is AragonApp {
      * @param _beneficiary address to which the deposit will be transferred if successful
      * @dev baseVault should have TRANSFER_ROLE permission
      */
-    function collectRewardsFor(address _beneficiary)
+    function distributeRewardsFor(address _beneficiary)
         public
         auth(COLLECT_REWARDS_ROLE)
     {
@@ -363,7 +363,7 @@ contract VotingReward is AragonApp {
      * @param _beneficiary address that should be fund with rewards
      * @dev rewardsVault should have TRANSFER_ROLE permission
      */
-    function distributeRewardsFor(address _beneficiary) public {
+    function collectRewardsFor(address _beneficiary) public {
         uint64 timestamp = getTimestamp64();
         // prettier-ignore
         LockedReward[] storage lockedRewards = addressLockedRewards[_beneficiary];
