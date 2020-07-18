@@ -6,6 +6,9 @@ const EPOCH = ONE_DAY * 15
 const PERCENTAGE_REWARD = '4200000000000000'
 const LOCK_TIME = ONE_DAY * 365
 const MISSING_VOTES_THREESHOLD = 1
+const ONE_DAY_BLOCKS = 5760 // 86400 / 15 where 15 is block time
+const DURATION_BLOCKS = ONE_DAY_BLOCKS * 5
+const BUFFER_BLOCKS = 5
 
 let accounts
 let voting, baseVault, rewardsVault, tokenManager
@@ -44,7 +47,7 @@ module.exports = {
       skipInitialize: true,
     })
 
-    voting = await _experimentalAppInstaller('voting', {
+    voting = await _experimentalAppInstaller('dandelion-voting', {
       skipInitialize: true,
     })
     baseVault = await _experimentalAppInstaller('vault')
@@ -56,7 +59,9 @@ module.exports = {
       miniMeToken.address,
       '510000000000000000', // 51%
       '510000000000000000', // 51%
-      '604800', // 1 week
+      DURATION_BLOCKS,
+      BUFFER_BLOCKS,
+      0
     ])
 
     rewardsToken = await ERC20.new(
@@ -69,6 +74,7 @@ module.exports = {
     log(`Base Vault: ${baseVault.address}`)
     log(`Rewards Vault: ${rewardsVault.address}`)
     log(`MiniMeToken: ${miniMeToken.address}`)
+    log(`Dandelion Voting: ${voting.address}`)
     log(`Rewards Token: ${rewardsToken.address}`)
     log(`TokenManager: ${tokenManager.address}`)
     log(`ERC20: ${rewardsToken.address}`)
