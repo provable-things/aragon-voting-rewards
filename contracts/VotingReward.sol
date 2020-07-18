@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 import "@aragon/os/contracts/apps/AragonApp.sol";
 import "@aragon/os/contracts/common/SafeERC20.sol";
 import "@aragon/os/contracts/lib/token/ERC20.sol";
-import "@aragon/apps-voting/contracts/Voting.sol";
+import "@1hive/apps-dandelion-voting/contracts/DandelionVoting.sol";
 import "@aragon/apps-vault/contracts/Vault.sol";
 import "@aragon/os/contracts/lib/math/SafeMath.sol";
 import "@aragon/os/contracts/lib/math/SafeMath64.sol";
@@ -65,13 +65,13 @@ contract VotingReward is AragonApp {
     struct Reward {
         uint256 amount;
         RewardState state;
-        uint64 lockDate;
+        uint64 lockBlock;
         uint64 lockTime;
     }
 
     Vault public baseVault;
     Vault public rewardsVault;
-    Voting public voting;
+    DandelionVoting public voting;
 
     address public rewardsToken;
     uint256 public percentageReward;
@@ -79,14 +79,14 @@ contract VotingReward is AragonApp {
 
     uint64 public epochDuration;
     uint64 public currentEpoch;
-    uint64 public claimStart;
+    uint64 public fromBlock;
     uint64 public lockTime;
-    uint64 private deployDate;
-    uint64 private lastClaimDate;
+    uint64 private deployBlock;
+    uint64 private lastDistribitionBlock;
 
     bool public isClaimOpened;
 
-    mapping(address => uint64) public lastDateDistributedRewards;
+    mapping(address => uint64) public lasBlockDistributedRewards;
     mapping(address => Reward[]) public addressRewards;
 
     event BaseVaultChanged(address baseVault);
@@ -105,11 +105,11 @@ contract VotingReward is AragonApp {
      * @notice Initialize VotingReward app contract
      * @param _baseVault Vault address from which token are taken
      * @param _rewardsVault Vault address to which token are put
-     * @param _voting Voting address
+     * @param _voting DandelionVoting address
      * @param _rewardsToken Accepted token address
-     * @param _epochDuration number of seconds minimun to have access to voting rewards
+     * @param _epochDuration number of blocks for which an epoch is opened
      * @param _percentageReward percentage of a reward expressed as a number between 10^16 and 10^18
-     * @param _lockTime number of seconds for which token will be locked after colleting reward
+     * @param _lockTime number of blocks for which token will be locked after colleting reward
      * @param _missingVotesThreeshold number of missing votes allowed in an epoch
      */
     function initialize(
@@ -132,49 +132,52 @@ contract VotingReward is AragonApp {
 
         baseVault = Vault(_baseVault);
         rewardsVault = Vault(_rewardsVault);
-        voting = Voting(_voting);
+        voting = DandelionVoting(_voting);
         rewardsToken = _rewardsToken;
         epochDuration = _epochDuration;
         percentageReward = _percentageReward;
         missingVotesThreeshold = _missingVotesThreeshold;
         lockTime = _lockTime;
 
-        deployDate = getTimestamp64();
-        lastClaimDate = getTimestamp64();
+        deployBlock = getBlockNumber64();
+        lastDistribitionBlock = getBlockNumber64();
         currentEpoch = 0;
 
         initialized();
     }
 
     /**
-     * @notice Open the claim for the current epoch from _claimStart
-     * @param _claimStart date from which starts to looking for rewards
+     * @notice Open the claim for the current epoch from _fromBlock
+     * @param _fromBlock block from which starting to look for rewards
      */
-    function openClaimForEpoch(uint64 _claimStart)
+    function openDistributionForEpoch(uint64 _fromBlock)
         external
         auth(OPEN_REWARDS_DISTRIBUTION_ROLE)
     {
         require(!isClaimOpened, ERROR_EPOCH_DISTRIBUTION_ALREADY_OPENED);
-        require(_claimStart >= lastClaimDate, ERROR_EPOCH);
-        require(getTimestamp64() - lastClaimDate >= epochDuration, ERROR_EPOCH);
+        require(_fromBlock > lastDistribitionBlock, ERROR_EPOCH);
+        require(
+            getBlockNumber64() - lastDistribitionBlock > epochDuration,
+            ERROR_EPOCH
+        );
 
-        claimStart = _claimStart;
+        fromBlock = _fromBlock;
         isClaimOpened = true;
 
-        emit ClaimEpochOpened(_claimStart, _claimStart + epochDuration);
+        emit ClaimEpochOpened(_fromBlock, _fromBlock + epochDuration);
     }
 
     /**
      * @notice close claim for current epoch if it's opened
      */
-    function closeClaimForCurrentEpoch()
+    function closeDistributionForCurrentEpoch()
         external
         auth(CLOSE_REWARDS_DISTRIBUTION_ROLE)
     {
         isClaimOpened = false;
         currentEpoch = currentEpoch.add(1);
-        lastClaimDate = getTimestamp64();
-        emit ClaimEpochClosed(getTimestamp64());
+        lastDistribitionBlock = getBlockNumber64();
+        emit ClaimEpochClosed(lastDistribitionBlock);
     }
 
     /**
@@ -276,12 +279,12 @@ contract VotingReward is AragonApp {
     }
 
     /**
-     * @notice Change Voting
+     * @notice Change DandelionVoting
      * @param _voting new voting address
      */
     function changeVoting(address _voting) external auth(CHANGE_VOTING_ROLE) {
         require(isContract(_voting), ERROR_ADDRESS_NOT_CONTRACT);
-        voting = Voting(_voting);
+        voting = DandelionVoting(_voting);
 
         emit VotingChanged(_voting);
     }
@@ -322,33 +325,33 @@ contract VotingReward is AragonApp {
     {
         require(isClaimOpened, ERROR_EPOCH_DISTRIBUTION_NOT_OPENED);
 
-        uint64 lastDateClaimedReward = 0;
-        if (lastDateDistributedRewards[_beneficiary] != 0) {
-            lastDateClaimedReward = lastDateDistributedRewards[_beneficiary];
+        uint64 lastBlockDistributedReward = 0;
+        if (lasBlockDistributedRewards[_beneficiary] != 0) {
+            lastBlockDistributedReward = lasBlockDistributedRewards[_beneficiary];
         } else {
-            lastDateClaimedReward = deployDate;
+            lastBlockDistributedReward = deployBlock;
         }
 
         // avoid double collecting for the same epoch
         require(
-            claimStart.add(epochDuration) > lastDateClaimedReward,
+            fromBlock.add(epochDuration) > lastBlockDistributedReward,
             ERROR_EPOCH
         );
 
-        uint64 claimEnd = claimStart.add(epochDuration);
+        uint64 claimEnd = fromBlock.add(epochDuration);
         uint256 reward = _calculateReward(
             _beneficiary,
-            claimStart,
+            fromBlock,
             claimEnd,
             missingVotesThreeshold
         );
 
         // TODO: understand if it's better to set the date
         // equal to now(timestamp) or the most recent vote date
-        lastDateDistributedRewards[_beneficiary] = getTimestamp64();
+        lasBlockDistributedRewards[_beneficiary] = getBlockNumber64();
 
         addressRewards[_beneficiary].push(
-            Reward(reward, RewardState.Locked, getTimestamp64(), lockTime)
+            Reward(reward, RewardState.Locked, getBlockNumber64(), lockTime)
         );
 
         baseVault.transfer(rewardsToken, rewardsVault, reward);
@@ -361,12 +364,12 @@ contract VotingReward is AragonApp {
      * @dev rewardsVault should have TRANSFER_ROLE permission
      */
     function collectRewardsFor(address _beneficiary) public {
-        uint64 timestamp = getTimestamp64();
+        uint64 timestamp = getBlockNumber64();
         // prettier-ignore
         Reward[] storage rewards = addressRewards[_beneficiary];
 
         for (uint256 i = 0; i < rewards.length; i++) {
-            if (timestamp - rewards[i].lockDate > rewards[i].lockTime) {
+            if (timestamp - rewards[i].lockBlock > rewards[i].lockTime) {
                 rewardsVault.transfer(
                     rewardsToken,
                     _beneficiary,
@@ -384,8 +387,8 @@ contract VotingReward is AragonApp {
      *         end of an epoch (now) and the balance at the first
      *         vote in an epoch (in percentage) for each vote happened within the epoch
      * @param _beneficiary beneficiary
-     * @param _from date from wich starting looking for votes
-     * @param _to   date to wich stopping looking for votes
+     * @param _from block from wich starting looking for votes
+     * @param _to   block to wich stopping looking for votes
      * @param _missingVotesThreeshold number of vote to which is possible to don't vote
      */
     function _calculateReward(
@@ -402,20 +405,22 @@ contract VotingReward is AragonApp {
             getBlockNumber64()
         );
 
-        for (uint256 voteId = voting.votesLength(); voteId > 0; voteId--) {
-            uint64 startDate;
+        // voteId starts from 1 in DandelionVoting
+        for (uint256 voteId = voting.votesLength(); voteId > 1; voteId--) {
+            uint64 startBlock;
             uint64 snapshotBlock;
-            (, , startDate, snapshotBlock, , , , , , ) = voting.getVote(
+            (, , startBlock, , snapshotBlock, , , , , , ) = voting.getVote(
+                //(bool,bool,uint64,uint64,uint64,uint64,uint64,uint256,uint256,uint256,bytes memory)
                 voteId.sub(1)
             );
 
-            if (startDate >= _from && startDate <= _to) {
-                Voting.VoterState state = voting.getVoterState(
+            if (startBlock >= _from && startBlock <= _to) {
+                DandelionVoting.VoterState state = voting.getVoterState(
                     voteId.sub(1),
                     _beneficiary
                 );
 
-                if (state == Voting.VoterState.Absent) {
+                if (state == DandelionVoting.VoterState.Absent) {
                     missingVotes = missingVotes.add(1);
                 }
 
@@ -434,7 +439,7 @@ contract VotingReward is AragonApp {
             }
 
             // avoid "out of epoch" cycles
-            if (startDate < _from) break;
+            if (startBlock < _from) break;
         }
 
         return minimunBalance.mul(percentageReward).div(PCT_BASE);
