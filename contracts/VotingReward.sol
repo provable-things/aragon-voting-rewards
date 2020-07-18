@@ -35,6 +35,8 @@ contract VotingReward is AragonApp {
     // prettier-ignore
     bytes32 public constant CHANGE_VOTING_ROLE = keccak256("CHANGE_VOTING_ROLE");
 
+    uint64 public constant PCT_BASE = 10**18; // 0% = 0; 1% = 10^16; 100% = 10^18
+
     // prettier-ignore
     string private constant ERROR_ADDRESS_NOT_CONTRACT = "VOTING_REWARD_ADDRESS_NOT_CONTRACT";
     // prettier-ignore
@@ -102,7 +104,7 @@ contract VotingReward is AragonApp {
      * @param _voting Voting address
      * @param _rewardsToken Accepted token address
      * @param _epochDuration number of seconds minimun to have access to voting rewards
-     * @param _percentageReward percentage of a reward
+     * @param _percentageReward percentage of a reward expressed as a number between 10^16 and 10^18
      * @param _lockTime number of seconds for which token will be locked after colleting reward
      * @param _missingVotesThreeshold number of missing votes allowed in an epoch
      */
@@ -120,10 +122,7 @@ contract VotingReward is AragonApp {
         require(isContract(_rewardsVault), ERROR_ADDRESS_NOT_CONTRACT);
         require(isContract(_voting), ERROR_ADDRESS_NOT_CONTRACT);
         require(isContract(_rewardsToken), ERROR_ADDRESS_NOT_CONTRACT);
-        require(
-            percentageReward >= 0 && _percentageReward <= 100,
-            ERROR_PERCENTAGE_REWARD
-        );
+        require(_percentageReward <= PCT_BASE, ERROR_PERCENTAGE_REWARD);
         require(_lockTime >= 0, ERROR_WRONG_VALUE);
         require(_missingVotesThreeshold >= 0, ERROR_WRONG_VALUE);
 
@@ -288,10 +287,7 @@ contract VotingReward is AragonApp {
         external
         auth(CHANGE_PERCENTAGE_REWARD_ROLE)
     {
-        require(
-            percentageReward >= 0 && _percentageReward <= 100,
-            ERROR_PERCENTAGE_REWARD
-        );
+        require(_percentageReward <= PCT_BASE, ERROR_PERCENTAGE_REWARD);
         percentageReward = _percentageReward;
 
         emit PercentageRewardChanged(percentageReward);
@@ -388,7 +384,7 @@ contract VotingReward is AragonApp {
 
     /**
      * @notice Reward is calculated as the minimun balance between the
-     *         end of an epoch (now) and the balance at the first 
+     *         end of an epoch (now) and the balance at the first
      *         vote in an epoch (in percentage) for each vote happened within the epoch
      * @param _beneficiary beneficiary
      * @param _from date from wich starting looking for votes
@@ -450,7 +446,7 @@ contract VotingReward is AragonApp {
         pure
         returns (uint256)
     {
-        return _value.mul(_pct).div(100);
+        return _value.mul(_pct).div(PCT_BASE);
     }
 
     /**
