@@ -28,13 +28,15 @@ const MOCK_TOKEN_BALANCE = '10000000000000000000000000'
 const MINIME_TOKEN_BALANCE = 100000
 const ONE_HOURS = 3600
 const ONE_DAY = 86400
-const SUPPORT_REQUIRED_PCT = '910000000000000000' // 91% (high to facilitate tests since value is irrilevant)
-const MIN_ACCEPTED_QUORUM_PCT = '910000000000000000' // 91% (high to facilitate tests since value is irrilevant)
+const SUPPORT_REQUIRED_PCT = '910000000000000000' // 91% (high to facilitate tests since the value is irrilevant
+const MIN_ACCEPTED_QUORUM_PCT = '910000000000000000' // 91% (high to facilitate tests since the value is irrilevant
 const VOTE_TIME = ONE_DAY * 5 // a vote is opened for 5 days
 const EPOCH = ONE_DAY * 15
 const PERCENTAGE_REWARD = '420000000000000000' // 42 * 100
 const LOCK_TIME = ONE_DAY * 365
 const MISSING_VOTES_THREESHOLD = 1
+const LOCKED = 0
+const DISTRIBUTED = 1
 
 contract('VotingReward', ([appManager, ...accounts]) => {
   let miniMeToken,
@@ -55,8 +57,9 @@ contract('VotingReward', ([appManager, ...accounts]) => {
     CHANGE_VOTING_ROLE,
     CREATE_VOTES_ROLE,
     CHANGE_PERCENTAGE_REWARD_ROLE,
-    COLLECT_REWARDS_ROLE,
-    OPEN_CLAIM_EPOCH_ROLE,
+    DISTRIBUTE_REWARDS_ROLE,
+    OPEN_REWARDS_DISTRIBUTION_ROLE,
+    CLOSE_REWARDS_DISTRIBUTION_ROLE,
     CHANGE_MISSING_VOTES_THREESHOLD_ROLE,
     CHANGE_LOCK_TIME_ROLE
 
@@ -68,8 +71,9 @@ contract('VotingReward', ([appManager, ...accounts]) => {
     CHANGE_VAULT_ROLE = await votingRewardBase.CHANGE_VAULT_ROLE()
     CHANGE_VOTING_ROLE = await votingRewardBase.CHANGE_VOTING_ROLE()
     CHANGE_PERCENTAGE_REWARD_ROLE = await votingRewardBase.CHANGE_PERCENTAGE_REWARD_ROLE()
-    COLLECT_REWARDS_ROLE = await votingRewardBase.COLLECT_REWARDS_ROLE()
-    OPEN_CLAIM_EPOCH_ROLE = await votingRewardBase.OPEN_CLAIM_EPOCH_ROLE()
+    DISTRIBUTE_REWARDS_ROLE = await votingRewardBase.DISTRIBUTE_REWARDS_ROLE()
+    OPEN_REWARDS_DISTRIBUTION_ROLE = await votingRewardBase.OPEN_REWARDS_DISTRIBUTION_ROLE()
+    CLOSE_REWARDS_DISTRIBUTION_ROLE = await votingRewardBase.CLOSE_REWARDS_DISTRIBUTION_ROLE()
     CHANGE_MISSING_VOTES_THREESHOLD_ROLE = await votingRewardBase.CHANGE_MISSING_VOTES_THREESHOLD_ROLE()
     CHANGE_LOCK_TIME_ROLE = await votingRewardBase.CHANGE_LOCK_TIME_ROLE()
 
@@ -490,7 +494,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           acl,
           appManager,
           votingReward.address,
-          COLLECT_REWARDS_ROLE,
+          DISTRIBUTE_REWARDS_ROLE,
           appManager
         )
 
@@ -512,7 +516,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           acl,
           appManager,
           votingReward.address,
-          COLLECT_REWARDS_ROLE,
+          DISTRIBUTE_REWARDS_ROLE,
           appManager
         )
 
@@ -525,7 +529,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
         await assertRevert(
           distributeRewardsForAll(votingReward, [appManager], appManager),
-          'VOTING_REWARD_CLAIM_NOT_OPENED'
+          'VOTING_REWARD_EPOCH_DISTRIBUTION_NOT_OPENED'
         )
       })
     })
@@ -554,7 +558,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           acl,
           appManager,
           votingReward.address,
-          COLLECT_REWARDS_ROLE,
+          DISTRIBUTE_REWARDS_ROLE,
           appManager
         )
 
@@ -562,7 +566,15 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           acl,
           appManager,
           votingReward.address,
-          OPEN_CLAIM_EPOCH_ROLE,
+          OPEN_REWARDS_DISTRIBUTION_ROLE,
+          appManager
+        )
+
+        await setPermission(
+          acl,
+          appManager,
+          votingReward.address,
+          CLOSE_REWARDS_DISTRIBUTION_ROLE,
           appManager
         )
       })
@@ -633,7 +645,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
 
         for (let account of accounts) {
-          const rewards = await votingReward.getLockedRewards(account)
+          const rewards = await votingReward.getRewards(account)
           // there is only 1 reward x user since there has been only one collectRewardsForAll
           assert.strictEqual(
             parseInt(rewards[0].amount),
@@ -697,7 +709,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
 
         for (let account of accounts) {
-          const rewards = await votingReward.getLockedRewards(account)
+          const rewards = await votingReward.getRewards(account)
           // there is only 1 reward x user since there has been only one collectRewardsForAll
           assert.strictEqual(
             parseInt(rewards[0].amount),
@@ -766,7 +778,6 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         }
 
         await timeTravel(EPOCH)
-
         await openClaimForEpoch(votingReward, claimStart, appManager)
         await distributeRewardsForAll(votingReward, accounts, appManager, 5)
         await closeClaimForCurrentEpoch(votingReward, appManager)
@@ -782,14 +793,14 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
         // expected locked 2 rewards
         for (let account of accounts) {
-          const rewards = await votingReward.getLockedRewards(account)
+          const rewards = await votingReward.getRewards(account)
           assert.strictEqual(
             parseInt(rewards[0].amount) + parseInt(rewards[1].amount),
             expectedRewardSingleUser * 2
           )
         }
 
-        // avoid to collecti last collected reward
+        // avoid to collecting last collected reward
         await timeTravel(LOCK_TIME - EPOCH - 1)
         await collectRewardsForAll(votingReward, accounts, appManager)
 
@@ -826,7 +837,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
         await assertRevert(
           openClaimForEpoch(votingReward, claimStart, appManager),
-          'VOTING_REWARD_ERROR_EPOCH_CLAIM_ALREADY_OPENED'
+          'VOTING_REWARD_EPOCH_DISTRIBUTION_ALREADY_OPENED'
         )
       })
 
@@ -879,6 +890,52 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
           const currentEpoch = (await votingReward.currentEpoch()).toString()
           assert.strictEqual(parseInt(currentEpoch), epoch + 1)
+        }
+      })
+
+      it('Should change from Locked to Distributed', async () => {
+        const numVotes = 10
+        const claimStart = await now()
+        for (let voteId = 0; voteId < numVotes; voteId++) {
+          await newVote(
+            voting,
+            executionTarget.address,
+            executionTarget.contract.methods.execute().encodeABI(),
+            appManager
+          )
+
+          for (let account of accounts) {
+            await timeTravel(ONE_HOURS)
+            await vote(voting, voteId, account)
+          }
+        }
+
+        await timeTravel(EPOCH)
+        await openClaimForEpoch(votingReward, claimStart, appManager)
+        await distributeRewardsForAll(votingReward, accounts, appManager, 5)
+        await closeClaimForCurrentEpoch(votingReward, appManager)
+
+        for (let account of accounts) {
+          const rewards = await votingReward.getRewards(account)
+          for (let { state } of rewards) {
+            assert.strictEqual(
+              parseInt(state),
+              LOCKED
+            )
+          }
+        }
+
+        await timeTravel(LOCK_TIME + EPOCH)
+        await collectRewardsForAll(votingReward, accounts, appManager)
+
+        for (let account of accounts) {
+          const rewards = await votingReward.getRewards(account)
+          for (let { state } of rewards) {
+            assert.strictEqual(
+              parseInt(state),
+              DISTRIBUTED
+            )
+          }
         }
       })
     })
