@@ -23,11 +23,11 @@ contract VotingReward is AragonApp {
     // prettier-ignore
     bytes32 public constant CHANGE_LOCK_TIME_ROLE = keccak256("CHANGE_LOCK_TIME_ROLE");
     // prettier-ignore
-    bytes32 public constant OPEN_CLAIM_EPOCH_ROLE = keccak256("OPEN_CLAIM_EPOCH_ROLE");
+    bytes32 public constant OPEN_REWARDS_DISTRIBUTION_ROLE = keccak256("OPEN_REWARDS_DISTRIBUTION_ROLE");
     // prettier-ignore
-    bytes32 public constant CLOSE_EPOCH_ROLE = keccak256("CLOSE_EPOCH_ROLE");
+    bytes32 public constant CLOSE_REWARDS_DISTRIBUTION_ROLE = keccak256("CLOSE_REWARDS_DISTRIBUTION_ROLE");
     // prettier-ignore
-    bytes32 public constant COLLECT_REWARDS_ROLE = keccak256("COLLECT_REWARDS_ROLE");
+    bytes32 public constant DISTRIBUTE_REWARDS_ROLE = keccak256("DISTRIBUTE_REWARDS_ROLE");
     // prettier-ignore
     bytes32 public constant CHANGE_PERCENTAGE_REWARD_ROLE = keccak256("CHANGE_PERCENTAGE_REWARD_ROLE");
     // prettier-ignore
@@ -54,15 +54,19 @@ contract VotingReward is AragonApp {
     // prettier-ignore
     string private constant ERROR_PERCENTAGE_REWARD = "VOTING_REWARD_PERCENTAGE_REWARD";
     // prettier-ignore
-    string private constant ERROR_EPOCH_CLAIM_NOT_OPENED = "VOTING_REWARD_CLAIM_NOT_OPENED";
+    string private constant ERROR_EPOCH_DISTRIBUTION_NOT_OPENED = "VOTING_REWARD_EPOCH_DISTRIBUTION_NOT_OPENED";
     // prettier-ignore
-    string private constant ERROR_EPOCH_CLAIM_ALREADY_OPENED = "VOTING_REWARD_ERROR_EPOCH_CLAIM_ALREADY_OPENED";
+    string private constant ERROR_EPOCH_DISTRIBUTION_ALREADY_OPENED = "VOTING_REWARD_EPOCH_DISTRIBUTION_ALREADY_OPENED";
     // prettier-ignore
     string private constant ERROR_WRONG_VALUE = "VOTING_REWARD_WRONG_VALUE";
 
-    struct LockedReward {
+    enum RewardState {Locked, Distributed}
+
+    struct Reward {
         uint256 amount;
+        RewardState state;
         uint64 lockDate;
+        uint64 lockTime;
     }
 
     Vault public baseVault;
@@ -82,8 +86,8 @@ contract VotingReward is AragonApp {
 
     bool public isClaimOpened;
 
-    mapping(address => uint64) public lastDateClaimedRewards;
-    mapping(address => LockedReward[]) public addressLockedRewards;
+    mapping(address => uint64) public lastDateDistributedRewards;
+    mapping(address => Reward[]) public addressRewards;
 
     event BaseVaultChanged(address baseVault);
     event RewardVaultChanged(address rewardsVault);
@@ -148,9 +152,9 @@ contract VotingReward is AragonApp {
      */
     function openClaimForEpoch(uint64 _claimStart)
         external
-        auth(OPEN_CLAIM_EPOCH_ROLE)
+        auth(OPEN_REWARDS_DISTRIBUTION_ROLE)
     {
-        require(!isClaimOpened, ERROR_EPOCH_CLAIM_ALREADY_OPENED);
+        require(!isClaimOpened, ERROR_EPOCH_DISTRIBUTION_ALREADY_OPENED);
         require(_claimStart >= lastClaimDate, ERROR_EPOCH);
         require(getTimestamp64() - lastClaimDate >= epochDuration, ERROR_EPOCH);
 
@@ -163,7 +167,10 @@ contract VotingReward is AragonApp {
     /**
      * @notice close claim for current epoch if it's opened
      */
-    function closeClaimForCurrentEpoch() external auth(OPEN_CLAIM_EPOCH_ROLE) {
+    function closeClaimForCurrentEpoch()
+        external
+        auth(CLOSE_REWARDS_DISTRIBUTION_ROLE)
+    {
         isClaimOpened = false;
         currentEpoch = currentEpoch.add(1);
         lastClaimDate = getTimestamp64();
@@ -177,10 +184,10 @@ contract VotingReward is AragonApp {
      */
     function distributeRewardsForAll(address[] _beneficiaries)
         external
-        auth(COLLECT_REWARDS_ROLE)
+        auth(DISTRIBUTE_REWARDS_ROLE)
     {
         require(voting.votesLength() > 0, ERROR_VOTING_NO_VOTES);
-        require(isClaimOpened, ERROR_EPOCH_CLAIM_NOT_OPENED);
+        require(isClaimOpened, ERROR_EPOCH_DISTRIBUTION_NOT_OPENED);
 
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
             distributeRewardsFor(_beneficiaries[i]);
@@ -294,17 +301,13 @@ contract VotingReward is AragonApp {
     }
 
     /**
-     * @notice Returns all locked rewards given an address
-     * @param _beneficiary address of which there are locked rewards
+     * @notice Returns all rewards given an address
+     * @param _beneficiary address of which we want to get all rewards
      */
-    function getLockedRewards(address _beneficiary)
-        external
-        view
-        returns (LockedReward[])
-    {
+    function getRewards(address _beneficiary) external view returns (Reward[]) {
         // prettier-ignore
-        LockedReward[] storage lockedRewards = addressLockedRewards[_beneficiary];
-        return lockedRewards;
+        Reward[] storage rewards = addressRewards[_beneficiary];
+        return rewards;
     }
 
     /**
@@ -315,13 +318,13 @@ contract VotingReward is AragonApp {
      */
     function distributeRewardsFor(address _beneficiary)
         public
-        auth(COLLECT_REWARDS_ROLE)
+        auth(DISTRIBUTE_REWARDS_ROLE)
     {
-        require(isClaimOpened, ERROR_EPOCH_CLAIM_NOT_OPENED);
+        require(isClaimOpened, ERROR_EPOCH_DISTRIBUTION_NOT_OPENED);
 
         uint64 lastDateClaimedReward = 0;
-        if (lastDateClaimedRewards[_beneficiary] != 0) {
-            lastDateClaimedReward = lastDateClaimedRewards[_beneficiary];
+        if (lastDateDistributedRewards[_beneficiary] != 0) {
+            lastDateClaimedReward = lastDateDistributedRewards[_beneficiary];
         } else {
             lastDateClaimedReward = deployDate;
         }
@@ -342,17 +345,11 @@ contract VotingReward is AragonApp {
 
         // TODO: understand if it's better to set the date
         // equal to now(timestamp) or the most recent vote date
-        lastDateClaimedRewards[_beneficiary] = getTimestamp64();
+        lastDateDistributedRewards[_beneficiary] = getTimestamp64();
 
-        // prettier-ignore
-        LockedReward[] storage lockedRewards = addressLockedRewards[_beneficiary];
-        uint256 index = _whereInsert(lockedRewards);
-        if (index == lockedRewards.length) {
-            lockedRewards.push(LockedReward(reward, getTimestamp64()));
-        } else {
-            // insert in a deleted slot
-            lockedRewards[index] = LockedReward(reward, getTimestamp64());
-        }
+        addressRewards[_beneficiary].push(
+            Reward(reward, RewardState.Locked, getTimestamp64(), lockTime)
+        );
 
         baseVault.transfer(rewardsToken, rewardsVault, reward);
         emit RewardLocked(_beneficiary, reward, lockTime);
@@ -366,18 +363,18 @@ contract VotingReward is AragonApp {
     function collectRewardsFor(address _beneficiary) public {
         uint64 timestamp = getTimestamp64();
         // prettier-ignore
-        LockedReward[] storage lockedRewards = addressLockedRewards[_beneficiary];
+        Reward[] storage rewards = addressRewards[_beneficiary];
 
-        for (uint256 i = 0; i < lockedRewards.length; i++) {
-            if (timestamp - lockedRewards[i].lockDate > lockTime) {
+        for (uint256 i = 0; i < rewards.length; i++) {
+            if (timestamp - rewards[i].lockDate > rewards[i].lockTime) {
                 rewardsVault.transfer(
                     rewardsToken,
                     _beneficiary,
-                    lockedRewards[i].amount
+                    rewards[i].amount
                 );
+                rewards[i].state = RewardState.Distributed;
 
-                emit RewardDistributed(_beneficiary, lockedRewards[i].amount);
-                delete lockedRewards[i];
+                emit RewardDistributed(_beneficiary, rewards[i].amount);
             }
         }
     }
@@ -405,14 +402,16 @@ contract VotingReward is AragonApp {
             getBlockNumber64()
         );
 
-        for (uint256 voteId = 0; voteId < voting.votesLength(); voteId++) {
+        for (uint256 voteId = voting.votesLength(); voteId > 0; voteId--) {
             uint64 startDate;
             uint64 snapshotBlock;
-            (, , startDate, snapshotBlock, , , , , , ) = voting.getVote(voteId);
+            (, , startDate, snapshotBlock, , , , , , ) = voting.getVote(
+                voteId.sub(1)
+            );
 
             if (startDate >= _from && startDate <= _to) {
                 Voting.VoterState state = voting.getVoterState(
-                    voteId,
+                    voteId.sub(1),
                     _beneficiary
                 );
 
@@ -424,58 +423,20 @@ contract VotingReward is AragonApp {
                     missingVotes <= _missingVotesThreeshold,
                     ERROR_TOO_MUCH_MISSING_VOTES
                 );
+
+                uint256 balanceAtVote = token.balanceOfAt(
+                    _beneficiary,
+                    snapshotBlock
+                );
+                if (balanceAtVote < minimunBalance) {
+                    minimunBalance = balanceAtVote;
+                }
             }
 
-            uint256 balanceAtVote = token.balanceOfAt(
-                _beneficiary,
-                snapshotBlock
-            );
-            if (balanceAtVote < minimunBalance) {
-                minimunBalance = balanceAtVote;
-            }
+            // avoid "out of epoch" cycles
+            if (startDate < _from) break;
         }
 
-        return _calculatePercentage(minimunBalance, percentageReward);
-    }
-
-    /**
-     * @notice Calculates a percentage
-     */
-    function _calculatePercentage(uint256 _value, uint256 _pct)
-        internal
-        pure
-        returns (uint256)
-    {
-        return _value.mul(_pct).div(PCT_BASE);
-    }
-
-    /**
-     * @notice Check is it's possible to insert a new locked reward in a deleted slot
-     * @param _lockedRewards locked rewards for an address
-     */
-    function _whereInsert(LockedReward[] memory _lockedRewards)
-        internal
-        pure
-        returns (uint256)
-    {
-        for (uint64 i = 0; i < _lockedRewards.length; i++) {
-            if (_isLockedRewardEmpty(_lockedRewards[i])) {
-                return i;
-            }
-        }
-
-        return _lockedRewards.length;
-    }
-
-    /**
-     * @notice Check if a LockedReward is empty
-     * @param _lockedReward locked reward
-     */
-    function _isLockedRewardEmpty(LockedReward memory _lockedReward)
-        internal
-        pure
-        returns (bool)
-    {
-        return _lockedReward.lockDate == 0 && _lockedReward.amount == 0;
+        return minimunBalance.mul(percentageReward).div(PCT_BASE);
     }
 }
