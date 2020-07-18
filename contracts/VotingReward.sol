@@ -75,10 +75,10 @@ contract VotingReward is AragonApp {
 
     uint64 public epochDuration;
     uint64 public currentEpoch;
-    uint64 private deployDate;
     uint64 public claimStart;
-    uint64 public lastClaimDate;
     uint64 public lockTime;
+    uint64 private deployDate;
+    uint64 private lastClaimDate;
 
     bool public isClaimOpened;
 
