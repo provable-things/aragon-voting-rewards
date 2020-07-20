@@ -1,19 +1,25 @@
+import { toBN } from "web3-utils"
+
 const UNLOCKED = 0
 const WITHDRAWN = 1
 const ABSENT = 0
 
-const findMinimunBalanceInRewardsForEpoch = (_rewards, _startBlock) => {
-  const filtered = _rewards.filter(
-    ({ state, lockBlock }) => state == UNLOCKED && lockBlock >= _startBlock
-  )
+const findMinimunBalanceInVotesForEpoch = (_votes, _from, _to) => {
+  let min = null
 
-  if (filtered.length === 0) return null
+  _votes.forEach((_vote, id) => {
+    // TODO understand why startDate is startBlock
+    if (_vote.startDate >= _from && _vote.startDate <= _to) {
+      if (!min) min = _vote.balance
 
-  return filtered.reduce(
-    (_min, _reward) =>
-      _min.cmp(_reward.amount) === -1 ? _min : _reward.amount,
-    filtered[0].amount
-  )
+      if (min.cmp(_vote.balance) === -1) {
+        min = _vote.balance
+      }
+    }
+  })
+
+  // should be safe since is already converted in offchain format
+  return !min ? 0 : min.toNumber()
 }
 
 const getElegibilityOnEpoch = (_votes, _from, _to, _missingVotesThreeshold) => {
@@ -22,14 +28,18 @@ const getElegibilityOnEpoch = (_votes, _from, _to, _missingVotesThreeshold) => {
 
   let votedAt = 0
   const votesInEpoch = []
-  for (let vote of _votes) {
-    if (vote.snapshotBlock >= _from && vote.snapshotBlock <= _to) {
-      votesInEpoch.push(vote)
-      if (vote.state !== ABSENT) {
+  _votes.forEach((_vote, id) => {
+    // TODO understand why startDate is startBlock
+    if (_vote.startDate >= _from && _vote.startDate <= _to) {
+      if (_vote.state !== ABSENT) {
         votedAt += 1
       }
+      votesInEpoch.push({
+        ..._vote,
+        id: id + 1,
+      })
     }
-  }
+  })
 
   return {
     eligible: votedAt >= _votes.length - _missingVotesThreeshold ? true : false,
@@ -39,7 +49,7 @@ const getElegibilityOnEpoch = (_votes, _from, _to, _missingVotesThreeshold) => {
 }
 
 export {
-  findMinimunBalanceInRewardsForEpoch,
+  findMinimunBalanceInVotesForEpoch,
   getElegibilityOnEpoch,
   UNLOCKED,
   WITHDRAWN,

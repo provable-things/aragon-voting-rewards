@@ -12,13 +12,14 @@ const reducer = (_state) => {
       baseVault: null,
       rewardsVault: null,
       rewardsToken: null,
+      votingToken: null,
       epoch: null,
       rewards: [],
       votes: [],
     }
   }
 
-  const { votes, epoch, rewards, rewardsToken } = _state
+  const { votes, epoch, rewards, rewardsToken, votingToken } = _state
 
   return {
     ..._state,
@@ -56,6 +57,7 @@ const reducer = (_state) => {
             ),
             supportRequired: parseInt(_vote.supportRequired, 10) / 18,
             state: parseInt(_vote.state),
+            balance: offChainFormat(toBN(_vote.balance), votingToken.decimals),
           }
         })
       : [],
