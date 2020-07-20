@@ -1,0 +1,1 @@
+An Aragon app that allows to get rewards in base of how many votes you made in a certain amount of time.

@@ -4,6 +4,7 @@ import Aragon, { events } from '@aragon/api'
 import ERC20Abi from './abi/ERC20.json'
 import VaultAbi from './abi/Vault.json'
 import VotingAbi from './abi/Voting.json'
+import MinimeTokenAbi from './abi/MinimeToken.json'
 import { first } from 'rxjs/operators'
 
 const app = new Aragon()
@@ -83,7 +84,7 @@ async function initialize(_initParams) {
           case 'RewardDistributed':
             return handleEvent(nextState)
           default:
-            return state
+            return nextState
         }
       } catch (_err) {
         console.error(`Failed to create store: ${_err.message}`)
@@ -101,12 +102,17 @@ function initializeState(_initParams) {
       const rewardsTokenAddress = await app.call('rewardsToken').toPromise()
       const rewardsToken = await getTokenData(rewardsTokenAddress)
 
+      const votingContract = app.external(_initParams.votingAddress, VotingAbi)
+      const votingTokenAddress = await votingContract.token().toPromise()
+      const votingToken = await getTokenData(votingTokenAddress)
+
       const epoch = await getEpochData()
 
       return {
         ..._initParams,
         ..._cachedState,
         rewardsToken,
+        votingToken,
         epoch,
       }
     } catch (_err) {
@@ -137,7 +143,11 @@ const handleAccountChange = async (_nextState, { account }) => {
       return {
         ..._nextState,
         account,
-        votes: await getVotes(_nextState.votingAddress, account),
+        votes: await getVotes(
+          _nextState.votingAddress,
+          _nextState.votingToken.address,
+          account
+        ),
         rewards: await getRewards(account),
       }
     }
@@ -178,7 +188,7 @@ const getEpochData = async () => {
 
     return {
       startBlock: lastDistributionBlock,
-      startDate: await getBlockTimeStamp(lastDistributionBlock),
+      startDate: await getBlockTimestamp(lastDistributionBlock),
       duration: await app.call('epochDuration').toPromise(),
       current: await app.call('currentEpoch').toPromise(),
       lockTime: await app.call('lockTime').toPromise(),
@@ -204,7 +214,7 @@ const getRewards = async (_receiver) => {
     return rewards.map(async (_reward) => {
       return {
         ..._reward,
-        lockDate: await getBlockTimeStamp(_reward.lockBlock),
+        lockDate: await getBlockTimestamp(_reward.lockBlock),
       }
     })
   } catch (_err) {
@@ -213,7 +223,11 @@ const getRewards = async (_receiver) => {
   }
 }
 
-const getVotes = async (_votingContractAddress, _account) => {
+const getVotes = async (
+  _votingContractAddress,
+  _votingTokenAddress,
+  _account
+) => {
   try {
     const votingContract = app.external(_votingContractAddress, VotingAbi)
     const votes = []
@@ -222,7 +236,14 @@ const getVotes = async (_votingContractAddress, _account) => {
       voteId <= (await votingContract.votesLength().toPromise());
       voteId++
     ) {
-      votes.push(await getVote(_account, voteId, _votingContractAddress))
+      votes.push(
+        await getVote(
+          _account,
+          voteId,
+          _votingContractAddress,
+          _votingTokenAddress
+        )
+      )
     }
     return votes
   } catch (_err) {
@@ -231,20 +252,33 @@ const getVotes = async (_votingContractAddress, _account) => {
   }
 }
 
-const getVote = async (_account, _voteId, _votingContractAddress) => {
+const getVote = async (
+  _account,
+  _voteId,
+  _votingContractAddress,
+  _votingTokenAddress
+) => {
   try {
     const votingContract = app.external(_votingContractAddress, VotingAbi)
+
     const vote = await votingContract.getVote(_voteId).toPromise()
     const state = await votingContract
       .getVoterState(_voteId, _account)
       .toPromise()
+
+    const votingTokenContract = app.external(
+      _votingTokenAddress,
+      MinimeTokenAbi
+    )
+    // TODO: why startDate and not startBlock?
+    const balance = await votingTokenContract
+      .balanceOfAt(_account, vote.startDate)
+      .toPromise()
+
     return {
       ...vote,
+      balance,
       state,
-      //startDate: vote.snapshotBlock ? await getBlockTimeStamp(vote.snapshotBlock) : null,
-      executionDate: vote.executionBlock
-        ? await getBlockTimeStamp(vote.executionBlock)
-        : null,
     }
   } catch (_err) {
     console.error(`Failed to load single vote: ${_err.message}`)
@@ -252,7 +286,7 @@ const getVote = async (_account, _voteId, _votingContractAddress) => {
   }
 }
 
-const getBlockTimeStamp = async (_blockNumber) => {
+const getBlockTimestamp = async (_blockNumber) => {
   try {
     const { timestamp } = await app
       .web3Eth('getBlock', _blockNumber)

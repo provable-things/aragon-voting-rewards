@@ -24,6 +24,7 @@ const useAppLogic = () => {
     baseVault,
     rewardsVault,
     rewardsToken,
+    votingToken,
     isSyncing,
     epoch,
     percentageRewards,
@@ -48,6 +49,7 @@ const useAppLogic = () => {
     percentageRewards,
     votes,
     rewards,
+    votingToken,
   }
 }
 

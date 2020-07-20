@@ -7,12 +7,13 @@ import {
   IconCheck,
   IconClock,
   IconClose,
+  Tag,
 } from '@aragon/ui'
 import styled from 'styled-components'
 import PropTypes from 'prop-types'
 import { parseSeconds } from '../utils/time-utils'
 import {
-  findMinimunBalanceInRewardsForEpoch,
+  findMinimunBalanceInVotesForEpoch,
   getElegibilityOnEpoch,
 } from '../utils/rewards-utils'
 import { strip } from '../utils/amount-utils'
@@ -32,7 +33,7 @@ const EpochDetails = (_props) => {
   const [percentageReward, setPercentageReward] = useState('-')
   const [status, setStatus] = useState('-')
   const [eligibility, setEligibility] = useState('-')
-  const [missingVotes, setMissingVotes] = useState('-')
+  //const [missingVotes, setMissingVotes] = useState('-')
   const [votesInEpoch, setvotesInEpoch] = useState([])
 
   useEffect(() => {
@@ -75,28 +76,29 @@ const EpochDetails = (_props) => {
   useEffect(() => {
     if (!epoch) return
 
-    const minimun = findMinimunBalanceInRewardsForEpoch(
-      rewards,
-      epoch.startBlock
+    const minimun = findMinimunBalanceInVotesForEpoch(
+      votes,
+      epoch.startBlock,
+      epoch.startBlock + epoch.durationBlock
     )
     if (!minimun) return
 
     setPartecipateWith(strip(minimun.toString()))
     setReward(strip(parseInt(minimun.toString()) * epoch.percentageReward))
-  }, [rewards])
+  }, [votes])
 
   useEffect(() => {
     if (!epoch) return
 
-    const { eligible, missingVotes, votesInEpoch } = getElegibilityOnEpoch(
+    const { eligible, /*missingVotes,*/ votesInEpoch } = getElegibilityOnEpoch(
       votes,
       epoch.startBlock,
-      epoch.durationBlock,
+      epoch.startBlock + epoch.durationBlock,
       epoch.missingVotesThreeshold
     )
 
     setEligibility(eligible)
-    setMissingVotes(missingVotes)
+    //setMissingVotes(missingVotes)
     setvotesInEpoch(votesInEpoch)
   }, [votes])
 
@@ -171,17 +173,61 @@ const EpochDetails = (_props) => {
           >
             <DetailText>Your participation to this epoch:</DetailText>
             <DetailValue>
-              <IconCheck
-                css={`
-                  color: green;
-                `}
-              />
-              <IconClose
-                css={`
-                  color: red;
-                `}
-              />
-              <IconClock />
+              {votesInEpoch.map(({ state, id }, _index) => {
+                return (
+                  <Fragment key={_index}>
+                    {state ? (
+                      <Tag
+                        mode="new"
+                        css={`
+                          margin-left: ${GU}px;
+                        `}
+                      >
+                        <IconCheck
+                          size="small"
+                          css={`
+                            color: green;
+                            vertical-align: text-top;
+                          `}
+                        />
+                        {`Vote #${id}`}
+                      </Tag>
+                    ) : !state && epochRemainder > 0 ? (
+                      <Tag
+                        mode="indicator"
+                        css={`
+                          margin-left: ${GU}px;
+                        `}
+                      >
+                        <IconClock
+                          size="small"
+                          css={`
+                            vertical-align: text-top;
+                          `}
+                        />
+                        {`Vote ${id}`}
+                      </Tag>
+                    ) : (
+                      <Tag
+                        color="red"
+                        css={`
+                          margin-left: ${GU}px;
+                          background: rgba(255, 102, 102, 0.35);
+                        `}
+                      >
+                        <IconClose
+                          size="small"
+                          css={`
+                            color: red;
+                            vertical-align: text-top;
+                          `}
+                        />
+                        {`Vote #${id}`}
+                      </Tag>
+                    )}
+                  </Fragment>
+                )
+              })}
             </DetailValue>
           </Detail>
         </Fragment>

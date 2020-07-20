@@ -42,7 +42,7 @@ const App = () => {
             }
           />
           <Row>
-            <Col xs={12} xl={5}>
+            <Col xs={12} xl={8}>
               <EpochDetails
                 rewardsToken={rewardsToken}
                 votes={votes}
@@ -51,7 +51,7 @@ const App = () => {
                 account={account}
               />
             </Col>
-            <Col xs={12} xl={7} className="mt-3 mt-xl-0">
+            <Col xs={12} xl={4} className="mt-3 mt-xl-0">
               <Rewards rewardsToken={rewardsToken} rewards={rewards} />
             </Col>
           </Row>
