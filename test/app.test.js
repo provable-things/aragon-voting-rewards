@@ -584,10 +584,10 @@ contract('VotingReward', ([appManager, ...accounts]) => {
       })
 
       it('Should not be able to collect rewards since there are not', async () => {
-          await assertRevert(
-            collectRewardsForAll(votingReward, accounts, appManager),
-            'VOTING_REWARD_NO_REWARDS'
-          )
+        await assertRevert(
+          collectRewardsForAll(votingReward, accounts, appManager),
+          'VOTING_REWARD_NO_REWARDS'
+        )
       })
 
       it('Should not be able to open a distribition because fromBlock is less than last distribition', async () => {
@@ -876,7 +876,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           distributeRewardsForAll(votingReward, accounts, appManager),
           'VOTING_REWARD_ERROR_EPOCH'
         )
-      })
+      }).timeout(50000)
 
       it('Should not be possible open a distribition 2 times in the same epoch', async () => {
         await mineBlocks(EPOCH_BLOCKS)
