@@ -60,7 +60,7 @@ contract VotingReward is AragonApp {
     // prettier-ignore
     string private constant ERROR_WRONG_VALUE = "VOTING_REWARD_WRONG_VALUE";
 
-    enum RewardState {Locked, Distributed}
+    enum RewardState {Unlocked, Withdrawn}
 
     struct Reward {
         uint256 amount;
@@ -351,7 +351,7 @@ contract VotingReward is AragonApp {
         lasBlockDistributedRewards[_beneficiary] = getBlockNumber64();
 
         addressRewards[_beneficiary].push(
-            Reward(reward, RewardState.Locked, getBlockNumber64(), lockTime)
+            Reward(reward, RewardState.Unlocked, getBlockNumber64(), lockTime)
         );
 
         baseVault.transfer(rewardsToken, rewardsVault, reward);
@@ -375,7 +375,7 @@ contract VotingReward is AragonApp {
                     _beneficiary,
                     rewards[i].amount
                 );
-                rewards[i].state = RewardState.Distributed;
+                rewards[i].state = RewardState.Withdrawn;
 
                 emit RewardDistributed(_beneficiary, rewards[i].amount);
             }
