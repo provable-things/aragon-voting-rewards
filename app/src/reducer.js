@@ -26,14 +26,16 @@ const reducer = (_state) => {
       ? {
           ...epoch,
           duration: epoch.duration
-            ? parseInt(epoch.duration) / BLOCK_TIME
+            ? parseInt(epoch.duration) * BLOCK_TIME
             : null,
+          durationBlock: parseInt(epoch.duration),
           current: epoch.current ? parseInt(epoch.current) : null,
           startBlock: epoch.startBlock ? parseInt(epoch.startBlock) : null,
-          lockTime: epoch.lockTime ? parseInt(epoch.lockTime) : null,
-          percentageReward: epoch.percentageReward
-            ? parseInt(epoch.percentageReward) / Math.pow(10, 16)
+          lockTime: epoch.lockTime
+            ? parseInt(epoch.lockTime) * BLOCK_TIME
             : null,
+          percentageReward: parseInt(epoch.percentageReward) / Math.pow(10, 16),
+          missingVotesThreeshold: parseInt(epoch.missingVotesThreeshold),
         }
       : null,
     votes: votes
@@ -53,6 +55,7 @@ const reducer = (_state) => {
               rewardsToken.decimals
             ),
             supportRequired: parseInt(_vote.supportRequired, 10) / 18,
+            state: parseInt(_vote.state),
           }
         })
       : [],

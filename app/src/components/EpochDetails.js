@@ -1,15 +1,24 @@
-import React, { useState, useEffect } from 'react'
-import { Box, ProgressBar, useTheme, GU } from '@aragon/ui'
+import React, { useState, useEffect, Fragment } from 'react'
+import {
+  Box,
+  ProgressBar,
+  useTheme,
+  GU,
+  IconCheck,
+  IconClock,
+  IconClose,
+} from '@aragon/ui'
 import styled from 'styled-components'
 import PropTypes from 'prop-types'
 import { parseSeconds } from '../utils/time-utils'
-import { findMinimunBalanceInRewardsForEpoch } from '../utils/rewards-utils'
-import { toBN } from 'web3-utils'
+import {
+  findMinimunBalanceInRewardsForEpoch,
+  getElegibilityOnEpoch,
+} from '../utils/rewards-utils'
 import { strip } from '../utils/amount-utils'
-import { getTimezone } from '../utils/time-utils'
 
 const EpochDetails = (_props) => {
-  const { rewardsToken, votes, rewards, epoch } = _props
+  const { rewardsToken, votes, rewards, epoch, account } = _props
 
   const theme = useTheme()
 
@@ -22,6 +31,9 @@ const EpochDetails = (_props) => {
   const [reward, setReward] = useState('-')
   const [percentageReward, setPercentageReward] = useState('-')
   const [status, setStatus] = useState('-')
+  const [eligibility, setEligibility] = useState('-')
+  const [missingVotes, setMissingVotes] = useState('-')
+  const [votesInEpoch, setvotesInEpoch] = useState([])
 
   useEffect(() => {
     if (!epoch) return
@@ -45,56 +57,48 @@ const EpochDetails = (_props) => {
       setEpochTermination(
         new Date((epoch.startDate + epoch.duration) * 1000).toLocaleString()
       )
-      setEpochRemainder(
-        new Date(
-          ((epoch.startDate + epoch.duration) * 1000 - new Date().getTime()) /
-            1000
-        ).toLocaleString()
-      )
     }
 
     if (epoch.duration && epoch.startDate) {
-      const ends = (epoch.startDate + epoch.duration) * 1000
-      setStatus(((ends - new Date().getTime()) / ends) * 100)
+      const start = epoch.startDate * 1000
+      const end = (epoch.startDate + epoch.duration) * 1000
+      const now = new Date().getTime()
+
+      setEpochRemainder((end - now) / 1000)
+
+      if (now > end) setStatus(1)
+
+      setStatus(Math.round(((now - start) / (end - start)) * 100) / 100)
     }
   }, [epoch])
 
   useEffect(() => {
     if (!epoch) return
 
-    const rt = [
-      {
-        amount: toBN(100000),
-        lockBlock: 1,
-        state: 0,
-      },
-      {
-        amount: toBN(10000000),
-        lockBlock: 1,
-        state: 0,
-      },
-      {
-        amount: toBN(200333000000),
-        lockBlock: 345667,
-        state: 0,
-      },
-      {
-        amount: toBN(20000000),
-        lockBlock: 345667,
-        state: 0,
-      },
-      {
-        amount: toBN(2000100000),
-        lockBlock: 345667,
-        state: 0,
-      },
-    ]
+    const minimun = findMinimunBalanceInRewardsForEpoch(
+      rewards,
+      epoch.startBlock
+    )
+    if (!minimun) return
 
-    const minimun = findMinimunBalanceInRewardsForEpoch(rt, epoch.startBlock)
     setPartecipateWith(strip(minimun.toString()))
-
     setReward(strip(parseInt(minimun.toString()) * epoch.percentageReward))
   }, [rewards])
+
+  useEffect(() => {
+    if (!epoch) return
+
+    const { eligible, missingVotes, votesInEpoch } = getElegibilityOnEpoch(
+      votes,
+      epoch.startBlock,
+      epoch.durationBlock,
+      epoch.missingVotesThreeshold
+    )
+
+    setEligibility(eligible)
+    setMissingVotes(missingVotes)
+    setvotesInEpoch(votesInEpoch)
+  }, [votes])
 
   return (
     <Box
@@ -124,7 +128,7 @@ const EpochDetails = (_props) => {
               color: ${theme.info};
             `}
           >
-            {` PNT`}
+            {rewardsToken ? ` ${rewardsToken.symbol}` : '-'}
           </TokenSymbol>
         </DetailValue>
       </Detail>
@@ -141,7 +145,7 @@ const EpochDetails = (_props) => {
               color: ${theme.info};
             `}
           >
-            {` PNT`}
+            {rewardsToken ? ` ${rewardsToken.symbol}` : '-'}
           </TokenSymbol>
         </DetailValue>
       </Detail>
@@ -151,9 +155,37 @@ const EpochDetails = (_props) => {
       </Detail>
       <Detail css={``}>
         <DetailText>Ends in:</DetailText>
-        <DetailValue>{epochRemainder}</DetailValue>
+        <DetailValue>
+          {epochRemainder && epochRemainder > 0
+            ? parseSeconds(epochRemainder)
+            : 'Terminated'}
+        </DetailValue>
       </Detail>
       <ProgressBar value={status} />
+      {account ? (
+        <Fragment>
+          <Detail
+            css={`
+              margin-top: ${5 * GU}px;
+            `}
+          >
+            <DetailText>Your participation to this epoch:</DetailText>
+            <DetailValue>
+              <IconCheck
+                css={`
+                  color: green;
+                `}
+              />
+              <IconClose
+                css={`
+                  color: red;
+                `}
+              />
+              <IconClock />
+            </DetailValue>
+          </Detail>
+        </Fragment>
+      ) : null}
     </Box>
   )
 }
@@ -183,6 +215,7 @@ EpochDetails.propTypes = {
   rewards: PropTypes.array,
   votes: PropTypes.array,
   epoch: PropTypes.object,
+  account: PropTypes.string,
 }
 
 export default EpochDetails
