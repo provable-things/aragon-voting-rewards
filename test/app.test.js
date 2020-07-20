@@ -63,7 +63,8 @@ contract('VotingReward', ([appManager, ...accounts]) => {
     OPEN_REWARDS_DISTRIBUTION_ROLE,
     CLOSE_REWARDS_DISTRIBUTION_ROLE,
     CHANGE_MISSING_VOTES_THREESHOLD_ROLE,
-    CHANGE_LOCK_TIME_ROLE
+    CHANGE_LOCK_TIME_ROLE,
+    CHANGE_REWARDS_TOKEN
 
   const NOT_CONTRACT = appManager
 
@@ -78,6 +79,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
     CLOSE_REWARDS_DISTRIBUTION_ROLE = await votingRewardBase.CLOSE_REWARDS_DISTRIBUTION_ROLE()
     CHANGE_MISSING_VOTES_THREESHOLD_ROLE = await votingRewardBase.CHANGE_MISSING_VOTES_THREESHOLD_ROLE()
     CHANGE_LOCK_TIME_ROLE = await votingRewardBase.CHANGE_LOCK_TIME_ROLE()
+    CHANGE_REWARDS_TOKEN = await votingRewardBase.CHANGE_REWARDS_TOKEN()
 
     votingBase = await Voting.new()
     CREATE_VOTES_ROLE = await votingBase.CREATE_VOTES_ROLE()
@@ -291,7 +293,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
       )
     })
 
-    it('Should set able to change baseVault, rewardsVault, voting, epochDuration, percentageReward, lockTime and missingVotesThreeshold', async () => {
+    it('Should set able to change baseVault, rewardsVault, voting, epochDuration, percentageReward, lockTime, missingVotesThreeshold and rewardsToken', async () => {
       await setPermission(
         acl,
         appManager,
@@ -340,6 +342,14 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         appManager
       )
 
+      await setPermission(
+        acl,
+        appManager,
+        votingReward.address,
+        CHANGE_REWARDS_TOKEN,
+        appManager
+      )
+
       await votingReward.changeEpochDuration(EPOCH_BLOCKS + ONE_DAY_BLOCKS, {
         from: appManager,
       })
@@ -367,7 +377,11 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         }
       )
 
-      await votingReward.changePercentageReward('100000000000000000', {
+      await votingReward.changePercentageRewards('100000000000000000', {
+        from: appManager,
+      })
+
+      await votingReward.changeRewardsToken(voting.address, {
         from: appManager,
       })
 
@@ -432,7 +446,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
 
     it('Should not be able to set a new Percentage Reward because of no permission', async () => {
       await assertRevert(
-        votingReward.changePercentageReward(PERCENTAGE_REWARD, {
+        votingReward.changePercentageRewards(PERCENTAGE_REWARD, {
           from: appManager,
         }),
         'APP_AUTH_FAILED'
@@ -467,10 +481,19 @@ contract('VotingReward', ([appManager, ...accounts]) => {
       )
 
       await assertRevert(
-        votingReward.changePercentageReward('10000000000000000001', {
+        votingReward.changePercentageRewards('10000000000000000001', {
           from: appManager,
         }),
         'VOTING_REWARD_PERCENTAGE_REWARD'
+      )
+    })
+
+    it('Should not be able to set a new rewards token because of no permission', async () => {
+      await assertRevert(
+        votingReward.changeRewardsToken(voting.address, {
+          from: appManager,
+        }),
+        'APP_AUTH_FAILED'
       )
     })
 
