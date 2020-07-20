@@ -4,14 +4,16 @@ const parseSeconds = (_seconds) => {
     return '1 year'
   } else if (days >= 730) {
     return `${Math.round(days / 365)} years`
-  } else if (days >= 1 && days <= 30) {
+  } else if (days === 30) {
     return '1 month'
   } else if (days > 60 && days < 365) {
     return `${Math.round(days / 30)} months`
+  } else if (days === 7) {
+    return `1 week`
+  } else if (days > 7 && days <= 30) {
+    return `${Math.round(days / 4)} weeks`
   } else if (days === 1) {
     return '1 day'
-  } else if (days >= 1) {
-    return `${days} days`
   } else if (days > 1) {
     return `${days} days`
   } else if (_seconds >= 3600) {

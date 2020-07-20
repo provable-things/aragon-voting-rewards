@@ -6,7 +6,15 @@ import { Row, Col } from 'react-bootstrap'
 import EpochDetails from './components/EpochDetails'
 
 const App = () => {
-  const { isSyncing, actions, panelState, votes, rewards } = useAppLogic()
+  const {
+    isSyncing,
+    actions,
+    panelState,
+    votes,
+    rewards,
+    rewardsToken,
+    epoch,
+  } = useAppLogic()
 
   const { appearance } = useGuiStyle()
 
@@ -44,7 +52,12 @@ const App = () => {
           </SidePanel>
           <Row>
             <Col xs={12} xl={4}>
-              <EpochDetails />
+              <EpochDetails
+                rewardsToken={rewardsToken}
+                votes={votes}
+                rewards={rewards}
+                epoch={epoch}
+              />
             </Col>
           </Row>
         </Fragment>

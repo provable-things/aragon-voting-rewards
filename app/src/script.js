@@ -72,8 +72,6 @@ async function initialize(_initParams) {
         ...state,
       }
 
-      console.log(event)
-
       try {
         switch (event) {
           case events.ACCOUNTS_TRIGGER:
@@ -82,7 +80,7 @@ async function initialize(_initParams) {
             return { ...nextState, isSyncing: true }
           case events.SYNC_STATUS_SYNCED:
             return { ...nextState, isSyncing: false }
-          case 'EpochDurationChanged':
+          case 'RewardDistributed':
             return handleEvent(nextState)
           default:
             return state
@@ -104,16 +102,12 @@ function initializeState(_initParams) {
       const rewardsToken = await getTokenData(rewardsTokenAddress)
 
       const epoch = await getEpochData()
-      const percentageReward = parseInt(
-        await app.call('percentageReward').toPromise()
-      )
 
       return {
         ..._initParams,
         ..._cachedState,
         rewardsToken,
         epoch,
-        percentageReward,
       }
     } catch (_err) {
       console.error(`Failed to initialize state: ${_err.message}`)
@@ -176,15 +170,26 @@ const getTokenData = async (_tokenAddress) => {
 
 const getEpochData = async () => {
   try {
+    // a new epoch starts when the rewards of the last epoch ends
+    const lastDistributionBlock = await app
+      .call('lastDistributionBlock')
+      .toPromise()
+
     return {
+      startBlock: lastDistributionBlock,
+      startDate: await getBlockTimeStamp(lastDistributionBlock),
       duration: await app.call('epochDuration').toPromise(),
       current: await app.call('currentEpoch').toPromise(),
+      lockTime: await app.call('lockTime').toPromise(),
+      percentageReward: await app.call('percentageReward').toPromise(),
     }
   } catch (_err) {
     console.error(`Failed to load epoch data: ${_err.message}`)
     return {
+      startBlock: null,
       duration: null,
       current: null,
+      lockTime: null,
     }
   }
 }
