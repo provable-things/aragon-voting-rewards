@@ -61,7 +61,7 @@ module.exports = {
       '510000000000000000', // 51%
       DURATION_BLOCKS,
       BUFFER_BLOCKS,
-      0
+      0,
     ])
 
     rewardsToken = await ERC20.new(
