@@ -81,8 +81,8 @@ contract VotingReward is AragonApp {
     uint64 public currentEpoch;
     uint64 public fromBlock;
     uint64 public lockTime;
+    uint64 public lastDistribitionBlock;
     uint64 private deployBlock;
-    uint64 private lastDistribitionBlock;
 
     bool public isClaimOpened;
 
@@ -168,7 +168,7 @@ contract VotingReward is AragonApp {
     }
 
     /**
-     * @notice close claim for current epoch if it's opened
+     * @notice close distribution for current epoch if it's opened and starts a new one
      */
     function closeDistributionForCurrentEpoch()
         external
