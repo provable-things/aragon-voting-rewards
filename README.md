@@ -3,6 +3,19 @@
 An Aragon app that allows to get rewards in base of how many votes you made in a certain amount of time.
 As Voting app, it uses the [following](https://github.com/1Hive/dandelion-voting-app) (__`Dandelion Voting`__) as it does not implement the "early voting" functionality, and therefore it's optimal in calculating the rewards.
 
+
+&nbsp;
+
+***
+
+&nbsp;
+
+## :arrow_down: How to install
+
+```
+dao install <DAO address> voting-reward.open.aragonpm.eth --app-init-args <base vault> <rewards vault> <voting app address> <rewards token address> <epoch duration> <percentage rewards> <lock time> <missing vote threeshold> --env aragon:rinkeby
+```
+
 &nbsp;
 
 ***
