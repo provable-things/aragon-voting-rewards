@@ -13,7 +13,6 @@ const reducer = (_state) => {
       rewardsVault: null,
       rewardsToken: null,
       epoch: null,
-      percentageReward: null,
       rewards: [],
       votes: [],
     }
@@ -25,8 +24,16 @@ const reducer = (_state) => {
     ..._state,
     epoch: epoch
       ? {
-          duration: parseInt(epoch.duration) / BLOCK_TIME,
-          current: parseInt(epoch.current),
+          ...epoch,
+          duration: epoch.duration
+            ? parseInt(epoch.duration) / BLOCK_TIME
+            : null,
+          current: epoch.current ? parseInt(epoch.current) : null,
+          startBlock: epoch.startBlock ? parseInt(epoch.startBlock) : null,
+          lockTime: epoch.lockTime ? parseInt(epoch.lockTime) : null,
+          percentageReward: epoch.percentageReward
+            ? parseInt(epoch.percentageReward) / Math.pow(10, 16)
+            : null,
         }
       : null,
     votes: votes
@@ -53,10 +60,9 @@ const reducer = (_state) => {
       ? rewards.map((_reward) => {
           return {
             ..._reward,
-            amount: parseInt(_reward.amount),
+            amount: offChainFormat(toBN(_reward.amount), rewardsToken.decimals),
             // lockTime is expressed in blocks
             lockTime: parseInt(lockTime * BLOCK_TIME),
-            expirationDate: _reward.lockDate + parseInt(lockTime * BLOCK_TIME),
           }
         })
       : [],
