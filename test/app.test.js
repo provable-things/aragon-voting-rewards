@@ -583,6 +583,13 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         )
       })
 
+      it('Should not be able to collect rewards since there are not', async () => {
+          await assertRevert(
+            collectRewardsForAll(votingReward, accounts, appManager),
+            'VOTING_REWARD_NO_REWARDS'
+          )
+      })
+
       it('Should not be able to open a distribition because fromBlock is less than last distribition', async () => {
         const numVotes = 10
         const fromBlock = await now()
@@ -677,7 +684,6 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         const numVotes = 10
         const fromBlock = await now()
 
-        const intialBalances = await getAccountsBalance(accounts, rewardsToken)
         const expectedReward = await getTotalReward(
           accounts,
           miniMeToken,
@@ -725,15 +731,10 @@ contract('VotingReward', ([appManager, ...accounts]) => {
           )
         }
 
-        await collectRewardsForAll(votingReward, accounts, appManager)
-
-        const actualBalances = await getAccountsBalance(accounts, rewardsToken)
-        for (let account of accounts) {
-          assert.strictEqual(
-            parseInt(actualBalances[account]),
-            parseInt(intialBalances[account])
-          )
-        }
+        await assertRevert(
+          collectRewardsForAll(votingReward, accounts, appManager),
+          'VOTING_REWARD_NO_REWARDS'
+        )
       }).timeout(200000)
 
       it('Should be able to distribute but not collecting all rewards (only tot/2)', async () => {
