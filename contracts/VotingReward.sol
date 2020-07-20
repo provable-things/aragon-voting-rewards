@@ -414,8 +414,7 @@ contract VotingReward is AragonApp {
         // voteId starts from 1 in DandelionVoting
         for (uint256 voteId = voting.votesLength(); voteId > 1; voteId--) {
             uint64 startBlock;
-            uint64 snapshotBlock;
-            (, , startBlock, , snapshotBlock, , , , , , ) = voting.getVote(
+            (, , startBlock, , , , , , , , ) = voting.getVote(
                 voteId.sub(1)
             );
 
@@ -436,7 +435,7 @@ contract VotingReward is AragonApp {
 
                 uint256 balanceAtVote = token.balanceOfAt(
                     _beneficiary,
-                    snapshotBlock
+                    startBlock
                 );
                 if (balanceAtVote < minimunBalance) {
                     minimunBalance = balanceAtVote;
