@@ -9,6 +9,41 @@
       "name": "Change vault",
       "id": "CHANGE_VAULT_ROLE",
       "params": []
+    },
+    {
+      "name": "Change number of missing votes within an epoch",
+      "id": "CHANGE_MISSING_VOTES_THREESHOLD_ROLE",
+      "params": []
+    },
+    {
+      "name": "Change rewards lock time",
+      "id": "CHANGE_LOCK_TIME_ROLE",
+      "params": []
+    },
+    {
+      "name": "Open distribution for the current epoch",
+      "id": "OPEN_REWARDS_DISTRIBUTION_ROLE",
+      "params": []
+    },
+    {
+      "name": "Close distribution for the current epoch",
+      "id": "CLOSE_REWARDS_DISTRIBUTION_ROLE",
+      "params": []
+    },
+    {
+      "name": "Distribute rewards",
+      "id": "DISTRIBUTE_REWARDS_ROLE",
+      "params": []
+    },
+    {
+      "name": "Change percentage rewards",
+      "id": "CHANGE_PERCENTAGE_REWARD_ROLE",
+      "params": []
+    },
+    {
+      "name": "Change voting contract",
+      "id": "CHANGE_VOTING_ROLE",
+      "params": []
     }
   ],
   "environments": {
