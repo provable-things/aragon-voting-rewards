@@ -1,13 +1,12 @@
 const ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
 const MOCK_TOKEN_BALANCE = '10000000000000000000000000'
 const MOCK_TOKEN_DECIMALS = 18
-const ONE_DAY = 86400
-const EPOCH = ONE_DAY * 15
+const ONE_DAY_BLOCKS = 86400 / 15
+const EPOCH_BLOCKS = 50 // 1 minutes
 const PERCENTAGE_REWARD = '4200000000000000'
-const LOCK_TIME = ONE_DAY * 365
+const LOCK_TIME = ONE_DAY_BLOCKS * 365
 const MISSING_VOTES_THREESHOLD = 1
-const ONE_DAY_BLOCKS = 5760 // 86400 / 15 where 15 is block time
-const DURATION_BLOCKS = ONE_DAY_BLOCKS * 5
+const DURATION_BLOCKS = 2
 const BUFFER_BLOCKS = 5
 
 let accounts
@@ -42,6 +41,7 @@ module.exports = {
       'DAOT',
       true
     )
+    await miniMeToken.generateTokens(appManager, 10000000)
 
     tokenManager = await _experimentalAppInstaller('token-manager', {
       skipInitialize: true,
@@ -98,7 +98,7 @@ module.exports = {
       rewardsVault.address,
       voting.address,
       rewardsToken.address,
-      EPOCH,
+      EPOCH_BLOCKS,
       PERCENTAGE_REWARD,
       LOCK_TIME,
       MISSING_VOTES_THREESHOLD,
