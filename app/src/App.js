@@ -4,21 +4,24 @@ import { Button, Header, Main, SidePanel, SyncIndicator } from '@aragon/ui'
 import { useGuiStyle } from '@aragon/api-react'
 import { Row, Col } from 'react-bootstrap'
 import EpochDetails from './components/EpochDetails'
+import Rewards from './components/Rewards'
 
 const App = () => {
   const {
     isSyncing,
     actions,
-    panelState,
     votes,
     rewards,
     rewardsToken,
     epoch,
+    account,
   } = useAppLogic()
 
   const { appearance } = useGuiStyle()
 
-  const handleClick = () => {}
+  const handleClick = (_e) => {
+    actions.collect(account)
+  }
 
   return (
     <Main theme={appearance}>
@@ -33,31 +36,22 @@ const App = () => {
                 <Button
                   mode="strong"
                   label={'Get Rewards'}
-                  onClick={(_e) => {
-                    //panelState.requestOpen(_e)
-                  }}
+                  onClick={handleClick}
                 />
               </React.Fragment>
             }
           />
-          <SidePanel
-            title={`title`}
-            opened={panelState.visible}
-            onClose={(_e) => {
-              panelState.requestClose(_e)
-            }}
-            onTransitionEnd={panelState.endTransition}
-          >
-            TODO
-          </SidePanel>
           <Row>
-            <Col xs={12} xl={4}>
+            <Col xs={12} xl={5}>
               <EpochDetails
                 rewardsToken={rewardsToken}
                 votes={votes}
                 rewards={rewards}
                 epoch={epoch}
               />
+            </Col>
+            <Col xs={12} xl={7} className="mt-3 mt-xl-0">
+              <Rewards rewardsToken={rewardsToken} rewards={rewards} />
             </Col>
           </Row>
         </Fragment>

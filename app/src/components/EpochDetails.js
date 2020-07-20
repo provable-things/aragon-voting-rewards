@@ -6,6 +6,7 @@ import { parseSeconds } from '../utils/time-utils'
 import { findMinimunBalanceInRewardsForEpoch } from '../utils/rewards-utils'
 import { toBN } from 'web3-utils'
 import { strip } from '../utils/amount-utils'
+import { getTimezone } from '../utils/time-utils'
 
 const EpochDetails = (_props) => {
   const { rewardsToken, votes, rewards, epoch } = _props
@@ -45,12 +46,13 @@ const EpochDetails = (_props) => {
         new Date((epoch.startDate + epoch.duration) * 1000).toLocaleString()
       )
       setEpochRemainder(
-        parseSeconds(
+        new Date(
           ((epoch.startDate + epoch.duration) * 1000 - new Date().getTime()) /
             1000
-        )
+        ).toLocaleString()
       )
     }
+
     if (epoch.duration && epoch.startDate) {
       const ends = (epoch.startDate + epoch.duration) * 1000
       setStatus(((ends - new Date().getTime()) / ends) * 100)
@@ -110,7 +112,7 @@ const EpochDetails = (_props) => {
         <DetailValue>{duration}</DetailValue>
       </Detail>
       <Detail>
-        <DetailText>Ends the day:</DetailText>
+        <DetailText>End date:</DetailText>
         <DetailValue>{epochTermination}</DetailValue>
       </Detail>
       <Detail>

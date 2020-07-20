@@ -136,6 +136,7 @@ const handleAccountChange = async (_nextState, { account }) => {
     if (account) {
       return {
         ..._nextState,
+        account,
         votes: await getVotes(_nextState.votingAddress, account),
         rewards: await getRewards(account),
       }
