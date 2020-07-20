@@ -19,6 +19,8 @@ contract VotingReward is AragonApp {
     // prettier-ignore
     bytes32 public constant CHANGE_EPOCH_DURATION_ROLE = keccak256("CHANGE_EPOCH_DURATION_ROLE");
     // prettier-ignore
+    bytes32 public constant CHANGE_REWARDS_TOKEN = keccak256("CHANGE_REWARDS_TOKEN");
+    // prettier-ignore
     bytes32 public constant CHANGE_MISSING_VOTES_THREESHOLD_ROLE = keccak256("CHANGE_MISSING_VOTES_THREESHOLD_ROLE");
     // prettier-ignore
     bytes32 public constant CHANGE_LOCK_TIME_ROLE = keccak256("CHANGE_LOCK_TIME_ROLE");
@@ -102,6 +104,7 @@ contract VotingReward is AragonApp {
     event LockTimeChanged(uint64 amount);
     event ClaimEpochOpened(uint64 start, uint64 end);
     event ClaimEpochClosed(uint64 date);
+    event RewardsTokenChanged(address addr);
 
     /**
      * @notice Initialize VotingReward app contract
@@ -295,7 +298,7 @@ contract VotingReward is AragonApp {
      * @notice Change percentage reward
      * @param _percentageReward new percentage
      */
-    function changePercentageReward(uint256 _percentageReward)
+    function changePercentageRewards(uint256 _percentageReward)
         external
         auth(CHANGE_PERCENTAGE_REWARD_ROLE)
     {
@@ -303,6 +306,20 @@ contract VotingReward is AragonApp {
         percentageReward = _percentageReward;
 
         emit PercentageRewardChanged(percentageReward);
+    }
+
+    /**
+     * @notice Change rewards token
+     * @param _rewardsToken new percentage
+     */
+    function changeRewardsToken(address _rewardsToken)
+        external
+        auth(CHANGE_PERCENTAGE_REWARD_ROLE)
+    {
+        require(isContract(_rewardsToken), ERROR_ADDRESS_NOT_CONTRACT);
+        rewardsToken = _rewardsToken;
+
+        emit RewardsTokenChanged(rewardsToken);
     }
 
     /**
@@ -414,9 +431,7 @@ contract VotingReward is AragonApp {
         // voteId starts from 1 in DandelionVoting
         for (uint256 voteId = voting.votesLength(); voteId > 1; voteId--) {
             uint64 startBlock;
-            (, , startBlock, , , , , , , , ) = voting.getVote(
-                voteId.sub(1)
-            );
+            (, , startBlock, , , , , , , , ) = voting.getVote(voteId.sub(1));
 
             if (startBlock >= _from && startBlock <= _to) {
                 DandelionVoting.VoterState state = voting.getVoterState(
