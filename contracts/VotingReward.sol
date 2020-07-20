@@ -81,12 +81,12 @@ contract VotingReward is AragonApp {
     uint64 public currentEpoch;
     uint64 public fromBlock;
     uint64 public lockTime;
-    uint64 public lastDistribitionBlock;
+    uint64 public lastDistributionBlock;
     uint64 private deployBlock;
 
     bool public isClaimOpened;
 
-    mapping(address => uint64) public lasBlockDistributedRewards;
+    mapping(address => uint64) private lasBlockDistributedRewards;
     mapping(address => Reward[]) public addressRewards;
 
     event BaseVaultChanged(address baseVault);
@@ -140,7 +140,7 @@ contract VotingReward is AragonApp {
         lockTime = _lockTime;
 
         deployBlock = getBlockNumber64();
-        lastDistribitionBlock = getBlockNumber64();
+        lastDistributionBlock = getBlockNumber64();
         currentEpoch = 0;
 
         initialized();
@@ -155,9 +155,9 @@ contract VotingReward is AragonApp {
         auth(OPEN_REWARDS_DISTRIBUTION_ROLE)
     {
         require(!isClaimOpened, ERROR_EPOCH_DISTRIBUTION_ALREADY_OPENED);
-        require(_fromBlock > lastDistribitionBlock, ERROR_EPOCH);
+        require(_fromBlock > lastDistributionBlock, ERROR_EPOCH);
         require(
-            getBlockNumber64() - lastDistribitionBlock > epochDuration,
+            getBlockNumber64() - lastDistributionBlock > epochDuration,
             ERROR_EPOCH
         );
 
@@ -176,8 +176,8 @@ contract VotingReward is AragonApp {
     {
         isClaimOpened = false;
         currentEpoch = currentEpoch.add(1);
-        lastDistribitionBlock = getBlockNumber64();
-        emit ClaimEpochClosed(lastDistribitionBlock);
+        lastDistributionBlock = getBlockNumber64();
+        emit ClaimEpochClosed(lastDistributionBlock);
     }
 
     /**
