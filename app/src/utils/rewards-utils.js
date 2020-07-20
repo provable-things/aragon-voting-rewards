@@ -1,9 +1,9 @@
-const LOCKED = 0
-const DISTRIBUTED = 1
+const UNLOCKED = 0
+const WITHDRAWN = 1
 
 const findMinimunBalanceInRewardsForEpoch = (_rewards, _startBlock) => {
   const filtered = _rewards.filter(
-    ({ state, lockBlock }) => state == LOCKED && lockBlock >= _startBlock
+    ({ state, lockBlock }) => state == UNLOCKED && lockBlock >= _startBlock
   )
 
   if (filtered.length === 0) return null
@@ -15,4 +15,4 @@ const findMinimunBalanceInRewardsForEpoch = (_rewards, _startBlock) => {
   )
 }
 
-export { findMinimunBalanceInRewardsForEpoch }
+export { findMinimunBalanceInRewardsForEpoch, UNLOCKED, WITHDRAWN }

@@ -23,4 +23,6 @@ const parseSeconds = (_seconds) => {
   } else return `${Math.round(_seconds)} seconds`
 }
 
-export { parseSeconds }
+const getTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone
+
+export { parseSeconds, getTimezone }
