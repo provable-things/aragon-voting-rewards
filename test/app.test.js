@@ -33,8 +33,8 @@ const EPOCH_BLOCKS = ONE_MINUTE_BLOCK * 5
 const PERCENTAGE_REWARD = '420000000000000000' // 42 * 100
 const LOCK_TIME_BLOCKS = ONE_MINUTE_BLOCK * 10
 const MISSING_VOTES_THREESHOLD = 1
-const LOCKED = 0
-const DISTRIBUTED = 1
+const UNLOCKED = 0
+const WITHDRAWN = 1
 const SUPPORT_REQUIRED_PCT = '910000000000000000' // 91% (high to facilitate tests since the value is irrilevant
 const MIN_ACCEPTED_QUORUM_PCT = '910000000000000000' // 91% (high to facilitate tests since the value is irrilevant
 const DURATION_BLOCKS = ONE_DAY_BLOCKS * 5
@@ -926,7 +926,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         for (let account of accounts) {
           const rewards = await votingReward.getRewards(account)
           for (let { state } of rewards) {
-            assert.strictEqual(parseInt(state), LOCKED)
+            assert.strictEqual(parseInt(state), UNLOCKED)
           }
         }
 
@@ -936,7 +936,7 @@ contract('VotingReward', ([appManager, ...accounts]) => {
         for (let account of accounts) {
           const rewards = await votingReward.getRewards(account)
           for (let { state } of rewards) {
-            assert.strictEqual(parseInt(state), DISTRIBUTED)
+            assert.strictEqual(parseInt(state), WITHDRAWN)
           }
         }
       }).timeout(50000)
