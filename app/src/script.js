@@ -183,6 +183,9 @@ const getEpochData = async () => {
       current: await app.call('currentEpoch').toPromise(),
       lockTime: await app.call('lockTime').toPromise(),
       percentageReward: await app.call('percentageReward').toPromise(),
+      missingVotesThreeshold: await app
+        .call('missingVotesThreeshold')
+        .toPromise(),
     }
   } catch (_err) {
     console.error(`Failed to load epoch data: ${_err.message}`)
@@ -232,10 +235,16 @@ const getVote = async (_account, _voteId, _votingContractAddress) => {
   try {
     const votingContract = app.external(_votingContractAddress, VotingAbi)
     const vote = await votingContract.getVote(_voteId).toPromise()
+    const state = await votingContract
+      .getVoterState(_voteId, _account)
+      .toPromise()
     return {
       ...vote,
-      startDate: await getBlockTimeStamp(vote.startBlock),
-      executionDate: await getBlockTimeStamp(vote.executionBlock),
+      state,
+      //startDate: vote.snapshotBlock ? await getBlockTimeStamp(vote.snapshotBlock) : null,
+      executionDate: vote.executionBlock
+        ? await getBlockTimeStamp(vote.executionBlock)
+        : null,
     }
   } catch (_err) {
     console.error(`Failed to load single vote: ${_err.message}`)

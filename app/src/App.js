@@ -48,6 +48,7 @@ const App = () => {
                 votes={votes}
                 rewards={rewards}
                 epoch={epoch}
+                account={account}
               />
             </Col>
             <Col xs={12} xl={7} className="mt-3 mt-xl-0">
