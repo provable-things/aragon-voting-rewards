@@ -59,6 +59,8 @@ contract VotingReward is AragonApp {
     string private constant ERROR_EPOCH_DISTRIBUTION_ALREADY_OPENED = "VOTING_REWARD_EPOCH_DISTRIBUTION_ALREADY_OPENED";
     // prettier-ignore
     string private constant ERROR_WRONG_VALUE = "VOTING_REWARD_WRONG_VALUE";
+    // prettier-ignore
+    string private constant ERROR_NO_REWARDS = "VOTING_REWARD_NO_REWARDS";
 
     enum RewardState {Unlocked, Withdrawn}
 
@@ -368,6 +370,7 @@ contract VotingReward is AragonApp {
         // prettier-ignore
         Reward[] storage rewards = addressRewards[_beneficiary];
 
+        uint256 collectedRewards = 0;
         for (uint256 i = 0; i < rewards.length; i++) {
             if (timestamp - rewards[i].lockBlock > rewards[i].lockTime) {
                 rewardsVault.transfer(
@@ -376,10 +379,13 @@ contract VotingReward is AragonApp {
                     rewards[i].amount
                 );
                 rewards[i].state = RewardState.Withdrawn;
+                collectedRewards = collectedRewards.add(1);
 
                 emit RewardDistributed(_beneficiary, rewards[i].amount);
             }
         }
+
+        require(collectedRewards >= 1, ERROR_NO_REWARDS);
     }
 
     /**
