@@ -36,7 +36,7 @@ const reducer = (_state) => {
             ? parseInt(epoch.lockTime) * BLOCK_TIME
             : null,
           percentageReward: parseInt(epoch.percentageReward) / Math.pow(10, 16),
-          missingVotesThreeshold: parseInt(epoch.missingVotesThreeshold),
+          missingVotesThreshold: parseInt(epoch.missingVotesThreshold),
         }
       : null,
     votes: votes

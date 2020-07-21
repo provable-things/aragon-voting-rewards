@@ -11,7 +11,7 @@ import "@aragon/os/contracts/lib/math/SafeMath64.sol";
 import "@aragon/apps-shared-minime/contracts/MiniMeToken.sol";
 
 
-contract VotingReward is AragonApp {
+contract VotingRewards is AragonApp {
     using SafeERC20 for ERC20;
     using SafeMath for uint256;
     using SafeMath64 for uint64;
@@ -19,9 +19,9 @@ contract VotingReward is AragonApp {
     // prettier-ignore
     bytes32 public constant CHANGE_EPOCH_DURATION_ROLE = keccak256("CHANGE_EPOCH_DURATION_ROLE");
     // prettier-ignore
-    bytes32 public constant CHANGE_REWARDS_TOKEN = keccak256("CHANGE_REWARDS_TOKEN");
+    bytes32 public constant CHANGE_REWARDS_TOKEN_ROLE = keccak256("CHANGE_REWARDS_TOKEN_ROLE");
     // prettier-ignore
-    bytes32 public constant CHANGE_MISSING_VOTES_THREESHOLD_ROLE = keccak256("CHANGE_MISSING_VOTES_THREESHOLD_ROLE");
+    bytes32 public constant CHANGE_MISSING_VOTES_THRESHOLD_ROLE = keccak256("CHANGE_MISSING_VOTES_THRESHOLD_ROLE");
     // prettier-ignore
     bytes32 public constant CHANGE_LOCK_TIME_ROLE = keccak256("CHANGE_LOCK_TIME_ROLE");
     // prettier-ignore
@@ -79,7 +79,7 @@ contract VotingReward is AragonApp {
 
     address public rewardsToken;
     uint256 public percentageReward;
-    uint256 public missingVotesThreeshold;
+    uint256 public missingVotesThreshold;
 
     uint64 public epochDuration;
     uint64 public currentEpoch;
@@ -100,14 +100,14 @@ contract VotingReward is AragonApp {
     event RewardLocked(address beneficiary, uint256 amount, uint64 lockTime);
     event RewardDistributed(address beneficiary, uint256 amount);
     event EpochDurationChanged(uint64 epoch);
-    event MissingVoteThreesholdChanged(uint256 amount);
+    event MissingVoteThresholdChanged(uint256 amount);
     event LockTimeChanged(uint64 amount);
     event ClaimEpochOpened(uint64 start, uint64 end);
     event ClaimEpochClosed(uint64 date);
     event RewardsTokenChanged(address addr);
 
     /**
-     * @notice Initialize VotingReward app contract
+     * @notice Initialize VotingRewards app contract
      * @param _baseVault Vault address from which token are taken
      * @param _rewardsVault Vault address to which token are put
      * @param _voting DandelionVoting address
@@ -115,7 +115,7 @@ contract VotingReward is AragonApp {
      * @param _epochDuration number of blocks for which an epoch is opened
      * @param _percentageReward percentage of a reward expressed as a number between 10^16 and 10^18
      * @param _lockTime number of blocks for which token will be locked after colleting reward
-     * @param _missingVotesThreeshold number of missing votes allowed in an epoch
+     * @param _missingVotesThreshold number of missing votes allowed in an epoch
      */
     function initialize(
         address _baseVault,
@@ -125,7 +125,7 @@ contract VotingReward is AragonApp {
         uint64 _epochDuration,
         uint256 _percentageReward,
         uint64 _lockTime,
-        uint256 _missingVotesThreeshold
+        uint256 _missingVotesThreshold
     ) external onlyInit {
         require(isContract(_baseVault), ERROR_ADDRESS_NOT_CONTRACT);
         require(isContract(_rewardsVault), ERROR_ADDRESS_NOT_CONTRACT);
@@ -133,7 +133,7 @@ contract VotingReward is AragonApp {
         require(isContract(_rewardsToken), ERROR_ADDRESS_NOT_CONTRACT);
         require(_percentageReward <= PCT_BASE, ERROR_PERCENTAGE_REWARD);
         require(_lockTime >= 0, ERROR_WRONG_VALUE);
-        require(_missingVotesThreeshold >= 0, ERROR_WRONG_VALUE);
+        require(_missingVotesThreshold >= 0, ERROR_WRONG_VALUE);
 
         baseVault = Vault(_baseVault);
         rewardsVault = Vault(_rewardsVault);
@@ -141,7 +141,7 @@ contract VotingReward is AragonApp {
         rewardsToken = _rewardsToken;
         epochDuration = _epochDuration;
         percentageReward = _percentageReward;
-        missingVotesThreeshold = _missingVotesThreeshold;
+        missingVotesThreshold = _missingVotesThreshold;
         lockTime = _lockTime;
 
         deployBlock = getBlockNumber64();
@@ -229,16 +229,16 @@ contract VotingReward is AragonApp {
 
     /**
      * @notice Change minimum number of missing votes allowed
-     * @param _missingVotesThreeshold number of seconds minimun to claim access to voting rewards
+     * @param _missingVotesThreshold number of seconds minimun to claim access to voting rewards
      */
-    function changeMissingVotesThreeshold(uint256 _missingVotesThreeshold)
+    function changeMissingVotesThreshold(uint256 _missingVotesThreshold)
         external
-        auth(CHANGE_MISSING_VOTES_THREESHOLD_ROLE)
+        auth(CHANGE_MISSING_VOTES_THRESHOLD_ROLE)
     {
-        require(_missingVotesThreeshold >= 0, ERROR_WRONG_VALUE);
-        missingVotesThreeshold = _missingVotesThreeshold;
+        require(_missingVotesThreshold >= 0, ERROR_WRONG_VALUE);
+        missingVotesThreshold = _missingVotesThreshold;
 
-        emit MissingVoteThreesholdChanged(_missingVotesThreeshold);
+        emit MissingVoteThresholdChanged(_missingVotesThreshold);
     }
 
     /**
@@ -252,7 +252,7 @@ contract VotingReward is AragonApp {
         require(_lockTime >= 0, ERROR_WRONG_VALUE);
         lockTime = _lockTime;
 
-        emit MissingVoteThreesholdChanged(_lockTime);
+        emit MissingVoteThresholdChanged(_lockTime);
     }
 
     /**
@@ -362,7 +362,7 @@ contract VotingReward is AragonApp {
             _beneficiary,
             fromBlock,
             claimEnd,
-            missingVotesThreeshold
+            missingVotesThreshold
         );
 
         // TODO: understand if it's better to set the date
@@ -412,13 +412,13 @@ contract VotingReward is AragonApp {
      * @param _beneficiary beneficiary
      * @param _from block from wich starting looking for votes
      * @param _to   block to wich stopping looking for votes
-     * @param _missingVotesThreeshold number of vote to which is possible to don't vote
+     * @param _missingVotesThreshold number of vote to which is possible to don't vote
      */
     function _calculateReward(
         address _beneficiary,
         uint64 _from,
         uint64 _to,
-        uint256 _missingVotesThreeshold
+        uint256 _missingVotesThreshold
     ) internal view returns (uint256 balance) {
         MiniMeToken token = MiniMeToken(voting.token());
 
@@ -444,7 +444,7 @@ contract VotingReward is AragonApp {
                 }
 
                 require(
-                    missingVotes <= _missingVotesThreeshold,
+                    missingVotes <= _missingVotesThreshold,
                     ERROR_TOO_MUCH_MISSING_VOTES
                 );
 

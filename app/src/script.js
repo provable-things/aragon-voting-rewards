@@ -193,8 +193,8 @@ const getEpochData = async () => {
       current: await app.call('currentEpoch').toPromise(),
       lockTime: await app.call('lockTime').toPromise(),
       percentageReward: await app.call('percentageReward').toPromise(),
-      missingVotesThreeshold: await app
-        .call('missingVotesThreeshold')
+      missingVotesThreshold: await app
+        .call('missingVotesThreshold')
         .toPromise(),
     }
   } catch (_err) {

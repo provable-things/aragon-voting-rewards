@@ -1,4 +1,4 @@
-import { toBN } from "web3-utils"
+import { toBN } from 'web3-utils'
 
 const UNLOCKED = 0
 const WITHDRAWN = 1

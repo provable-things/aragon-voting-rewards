@@ -47,7 +47,7 @@ module.exports = {
     clientServePort: 3000,
     appSrcPath: 'app/',
     appBuildOutputPath: 'dist/',
-    appName: 'voting-reward',
+    appName: 'voting-rewards',
     hooks, // Path to script hooks
   },
 }
