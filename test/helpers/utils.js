@@ -12,7 +12,7 @@ const vote = (_voting, _voteId, _from) =>
     from: _from,
   })
 
-const distributeRewardForAll = async (
+const distributeRewardsToMany = async (
   _votingReward,
   _beneficiaries,
   _appManager,
@@ -25,13 +25,13 @@ const distributeRewardForAll = async (
     const from = chunk * _interval
     const to = chunk * _interval + _interval
 
-    await _votingReward.distributeRewardForAll(_beneficiaries.slice(from, to), {
+    await _votingReward.distributeRewardsToMany(_beneficiaries.slice(from, to), {
       from: _appManager,
       gas: 9500000,
     })
   }
 
-  await _votingReward.distributeRewardForAll(
+  await _votingReward.distributeRewardsToMany(
     _beneficiaries.slice(
       _beneficiaries.length - remainder,
       _beneficiaries.length
@@ -43,7 +43,7 @@ const distributeRewardForAll = async (
   )
 }
 
-const collectRewardForAll = async (
+const collectRewardsForMany = async (
   _votingReward,
   _beneficiaries,
   _appManager,
@@ -56,13 +56,13 @@ const collectRewardForAll = async (
     const from = chunk * _interval
     const to = chunk * _interval + _interval
 
-    await _votingReward.collectRewardForAll(_beneficiaries.slice(from, to), {
+    await _votingReward.collectRewardsForMany(_beneficiaries.slice(from, to), {
       from: _appManager,
       gas: 9500000,
     })
   }
 
-  await _votingReward.collectRewardForAll(
+  await _votingReward.collectRewardsForMany(
     _beneficiaries.slice(
       _beneficiaries.length - remainder,
       _beneficiaries.length
@@ -74,8 +74,8 @@ const collectRewardForAll = async (
   )
 }
 
-const distributeRewardFor = (_votingReward, _beneficiary, _appManager) =>
-  _votingReward.distributeRewardFor(_beneficiary, {
+const distributeRewardsTo = (_votingReward, _beneficiary, _appManager) =>
+  _votingReward.distributeRewardsTo(_beneficiary, {
     from: _appManager,
   })
 
@@ -117,13 +117,13 @@ const getTotalReward = async (
 }
 
 module.exports = {
-  collectRewardForAll,
+  collectRewardsForMany,
   newVote,
   vote,
   openRewardDistributionForEpoch,
   closeRewardDistributionForCurrentEpoch,
-  distributeRewardFor,
+  distributeRewardsTo,
   getAccountsBalance,
   getTotalReward,
-  distributeRewardForAll,
+  distributeRewardsToMany,
 }

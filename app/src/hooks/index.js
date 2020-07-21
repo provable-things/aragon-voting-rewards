@@ -7,7 +7,7 @@ const useCollectRewardAction = () => {
   return useCallback(
     (_receiver) => {
       try {
-        api.collectRewardFor(_receiver).toPromise()
+        api.collectRewardsFor(_receiver).toPromise()
       } catch (error) {
         console.error(error)
       }

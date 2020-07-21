@@ -194,7 +194,7 @@ contract VotingRewards is AragonApp {
      * @param _beneficiaries address that are looking for reward
      * @dev this function should be called from outside each _epochDuration seconds
      */
-    function distributeRewardForAll(address[] _beneficiaries)
+    function distributeRewardsToMany(address[] _beneficiaries)
         external
         auth(DISTRIBUTE_REWARD_ROLE)
     {
@@ -202,7 +202,7 @@ contract VotingRewards is AragonApp {
         require(isDistributionOpen, ERROR_EPOCH_REWARD_DISTRIBUTION_NOT_OPENED);
 
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
-            distributeRewardFor(_beneficiaries[i]);
+            distributeRewardsTo(_beneficiaries[i]);
         }
     }
 
@@ -211,9 +211,9 @@ contract VotingRewards is AragonApp {
      *         if lockTime is passed since when tokens have been distributed
      * @param _beneficiaries addresses that should be fund with rewards
      */
-    function collectRewardForAll(address[] _beneficiaries) external {
+    function collectRewardsForMany(address[] _beneficiaries) external {
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
-            collectRewardFor(_beneficiaries[i]);
+            collectRewardsFor(_beneficiaries[i]);
         }
     }
 
@@ -342,7 +342,7 @@ contract VotingRewards is AragonApp {
      * @param _beneficiary address to which the deposit will be transferred if successful
      * @dev baseVault should have TRANSFER_ROLE permission
      */
-    function distributeRewardFor(address _beneficiary)
+    function distributeRewardsTo(address _beneficiary)
         public
         auth(DISTRIBUTE_REWARD_ROLE)
     {
@@ -384,7 +384,7 @@ contract VotingRewards is AragonApp {
      * @param _beneficiary address that should be fund with rewards
      * @dev rewardsVault should have TRANSFER_ROLE permission
      */
-    function collectRewardFor(address _beneficiary) public {
+    function collectRewardsFor(address _beneficiary) public {
         uint64 timestamp = getBlockNumber64();
         // prettier-ignore
         Reward[] storage rewards = addressRewards[_beneficiary];
