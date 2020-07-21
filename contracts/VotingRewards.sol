@@ -102,8 +102,8 @@ contract VotingRewards is AragonApp {
     event EpochDurationChanged(uint64 epoch);
     event MissingVoteThresholdChanged(uint256 amount);
     event LockTimeChanged(uint64 amount);
-    event ClaimEpochOpened(uint64 start, uint64 end);
-    event ClaimEpochClosed(uint64 date);
+    event RewardDistributionEpochOpened(uint64 start, uint64 end);
+    event RewardDistributionEpochClosed(uint64 date);
     event RewardTokenChanged(address addr);
 
     /**
@@ -169,7 +169,7 @@ contract VotingRewards is AragonApp {
         fromBlock = _fromBlock;
         isDistributionOpen = true;
 
-        emit ClaimEpochOpened(_fromBlock, _fromBlock + epochDuration);
+        emit RewardDistributionEpochOpened(_fromBlock, _fromBlock + epochDuration);
     }
 
     /**
@@ -179,10 +179,14 @@ contract VotingRewards is AragonApp {
         external
         auth(CLOSE_REWARD_DISTRIBUTION_ROLE)
     {
+        require(
+            isDistributionOpen == true,
+            ERROR_EPOCH_REWARD_DISTRIBUTION_NOT_OPENED
+        );
         isDistributionOpen = false;
         currentEpoch = currentEpoch.add(1);
         lastRewardDistributionBlock = getBlockNumber64();
-        emit ClaimEpochClosed(lastRewardDistributionBlock);
+        emit RewardDistributionEpochClosed(lastRewardDistributionBlock);
     }
 
     /**
