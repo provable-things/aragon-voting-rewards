@@ -94,7 +94,7 @@ const EpochDetails = (_props) => {
       votes,
       epoch.startBlock,
       epoch.startBlock + epoch.durationBlock,
-      epoch.missingVotesThreeshold
+      epoch.missingVotesThreshold
     )
 
     setEligibility(eligible)
