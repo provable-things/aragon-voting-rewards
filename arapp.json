@@ -22,12 +22,12 @@
     },
     {
       "name": "Open distribution for the current epoch",
-      "id": "OPEN_REWARD_DISTRIBUTION_ROLE",
+      "id": "OPEN_REWARDS_DISTRIBUTION_ROLE",
       "params": []
     },
     {
       "name": "Close distribution for the current epoch",
-      "id": "CLOSE_REWARD_DISTRIBUTION_ROLE",
+      "id": "CLOSE_REWARDS_DISTRIBUTION_ROLE",
       "params": []
     },
     {
@@ -37,7 +37,7 @@
     },
     {
       "name": "Change percentage rewards",
-      "id": "CHANGE_PERCENTAGE_REWARD_ROLE",
+      "id": "CHANGE_PERCENTAGE_REWARDS_ROLE",
       "params": []
     },
     {
