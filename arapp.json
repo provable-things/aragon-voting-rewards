@@ -12,7 +12,7 @@
     },
     {
       "name": "Change number of missing votes within an epoch",
-      "id": "CHANGE_MISSING_VOTES_THREESHOLD_ROLE",
+      "id": "CHANGE_MISSING_VOTES_THRESHOLD_ROLE",
       "params": []
     },
     {
@@ -48,25 +48,25 @@
   ],
   "environments": {
     "default": {
-      "appName": "voting-reward.aragonpm.eth",
+      "appName": "voting-rewards.aragonpm.eth",
       "network": "rpc"
     },
     "rinkeby": {
       "registry": "0x98df287b6c145399aaa709692c8d308357bc085d",
-      "appName": "voting-reward.open.aragonpm.eth",
+      "appName": "voting-rewards.open.aragonpm.eth",
       "network": "rinkeby"
     },
     "staging": {
       "registry": "0xfe03625ea880a8cba336f9b5ad6e15b0a3b5a939",
-      "appName": "voting-reward.aragonpm.eth",
+      "appName": "voting-rewards.aragonpm.eth",
       "network": "rinkeby"
     },
     "mainnet": {
       "registry": "0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e",
-      "appName": "voting-reward.aragonpm.eth",
+      "appName": "voting-rewards.aragonpm.eth",
       "network": "mainnet"
     }
   },
-  "appName": "voting-reward",
-  "path": "contracts/VotingReward.sol"
+  "appName": "voting-rewards",
+  "path": "contracts/VotingRewards.sol"
 }
