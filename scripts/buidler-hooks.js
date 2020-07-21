@@ -3,7 +3,7 @@ const MOCK_TOKEN_BALANCE = '10000000000000000000000000'
 const MOCK_TOKEN_DECIMALS = 18
 const ONE_DAY_BLOCKS = 86400 / 15
 const EPOCH_BLOCKS = 50 // 1 minutes
-const PERCENTAGE_REWARD = '4200000000000000'
+const PERCENTAGE_REWARD = '420000000000000000'
 const LOCK_TIME = ONE_DAY_BLOCKS * 365
 const MISSING_VOTES_THRESHOLD = 1
 const DURATION_BLOCKS = 2
@@ -30,7 +30,7 @@ module.exports = {
     const MiniMeToken = artifacts.require('MiniMeToken')
     const MiniMeTokenFactory = artifacts.require('MiniMeTokenFactory')
     const ERC20 = artifacts.require('StandardToken')
-
+    
     const miniMeTokenFactory = await MiniMeTokenFactory.new()
     miniMeToken = await MiniMeToken.new(
       miniMeTokenFactory.address,
