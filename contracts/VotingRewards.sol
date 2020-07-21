@@ -83,14 +83,14 @@ contract VotingRewards is AragonApp {
 
     uint64 public epochDuration;
     uint64 public currentEpoch;
-    uint64 public fromBlock;
+    uint64 public startBlockNumberOfCurrentEpoch;
     uint64 public lockTime;
     uint64 public lastRewardDistributionBlock;
     uint64 private deployBlock;
 
     bool public isDistributionOpen;
 
-    mapping(address => uint64) private lasBlockDistributedReward;
+    mapping(address => uint64) private previousRewardDistributionBlockNumber;
     mapping(address => Reward[]) public addressRewards;
 
     event BaseVaultChanged(address baseVault);
@@ -173,7 +173,7 @@ contract VotingRewards is AragonApp {
             ERROR_EPOCH
         );
 
-        fromBlock = _fromBlock;
+        startBlockNumberOfCurrentEpoch = _fromBlock;
         isDistributionOpen = true;
 
         emit RewardDistributionEpochOpened(
@@ -272,7 +272,7 @@ contract VotingRewards is AragonApp {
      * @notice Change Base Vault
      * @param _baseVault new base vault address
      */
-    function changeBaseVault(address _baseVault)
+    function changeBaseVaultContractAddress(address _baseVault)
         external
         auth(CHANGE_VAULT_ROLE)
     {
@@ -286,7 +286,7 @@ contract VotingRewards is AragonApp {
      * @notice Change Reward Vault
      * @param _rewardsVault new reward vault address
      */
-    function changeRewardsVault(address _rewardsVault)
+    function changeRewardsVaultContractAddress(address _rewardsVault)
         external
         auth(CHANGE_VAULT_ROLE)
     {
@@ -300,7 +300,7 @@ contract VotingRewards is AragonApp {
      * @notice Change Dandelion Voting contract address
      * @param _dandelionVoting new dandelionVoting address
      */
-    function changeDandelionVotingContract(address _dandelionVoting)
+    function changeDandelionVotingContractAddress(address _dandelionVoting)
         external
         auth(CHANGE_VOTING_ROLE)
     {
@@ -313,6 +313,7 @@ contract VotingRewards is AragonApp {
     /**
      * @notice Change percentage reward
      * @param _percentageReward new percentage
+     * @dev PCT_BASE is the maximun allowed percentage
      */
     function changePercentageReward(uint256 _percentageReward)
         external
@@ -328,7 +329,7 @@ contract VotingRewards is AragonApp {
      * @notice Change rewards token
      * @param _rewardToken new percentage
      */
-    function changeRewardToken(address _rewardToken)
+    function changeRewardTokenContractAddress(address _rewardToken)
         external
         auth(CHANGE_PERCENTAGE_REWARD_ROLE)
     {
@@ -342,9 +343,12 @@ contract VotingRewards is AragonApp {
      * @notice Returns all rewards given an address
      * @param _beneficiary address of which we want to get all rewards
      */
-    function getRewards(address _beneficiary) external view returns (Reward[]) {
-        // prettier-ignore
-        Reward[] storage rewards = addressRewards[_beneficiary];
+    function getRewardsInfo(address _beneficiary)
+        external
+        view
+        returns (Reward[])
+    {
+        Reward[] rewards = addressRewards[_beneficiary];
         return rewards;
     }
 
@@ -361,34 +365,37 @@ contract VotingRewards is AragonApp {
         require(isDistributionOpen, ERROR_EPOCH_REWARD_DISTRIBUTION_NOT_OPENED);
 
         uint64 lastBlockDistributedReward = 0;
-        if (lasBlockDistributedReward[_beneficiary] != 0) {
-            lastBlockDistributedReward = lasBlockDistributedReward[_beneficiary];
+        if (previousRewardDistributionBlockNumber[_beneficiary] != 0) {
+            lastBlockDistributedReward = previousRewardDistributionBlockNumber[_beneficiary];
         } else {
             lastBlockDistributedReward = deployBlock;
         }
 
         // avoid double collecting for the same epoch
-        require(
-            fromBlock.add(epochDuration) > lastBlockDistributedReward,
-            ERROR_EPOCH
-        );
+        uint64 claimEnd = startBlockNumberOfCurrentEpoch.add(epochDuration);
+        require(claimEnd > lastBlockDistributedReward, ERROR_EPOCH);
 
-        uint64 claimEnd = fromBlock.add(epochDuration);
-        uint256 reward = _calculateReward(
+        uint256 rewardAmount = _calculateReward(
             _beneficiary,
-            fromBlock,
+            startBlockNumberOfCurrentEpoch,
             claimEnd,
             missingVotesThreshold
         );
 
-        lasBlockDistributedReward[_beneficiary] = getBlockNumber64();
+        uint64 currentBlockNumber = getBlockNumber64();
+        previousRewardDistributionBlockNumber[_beneficiary] = currentBlockNumber;
 
         addressRewards[_beneficiary].push(
-            Reward(reward, RewardState.Unlocked, getBlockNumber64(), lockTime)
+            Reward(
+                rewardAmount,
+                RewardState.Unlocked,
+                currentBlockNumber,
+                lockTime
+            )
         );
 
-        baseVault.transfer(rewardToken, rewardsVault, reward);
-        emit RewardDistributed(_beneficiary, reward, lockTime);
+        baseVault.transfer(rewardToken, rewardsVault, rewardAmount);
+        emit RewardDistributed(_beneficiary, rewardAmount, lockTime);
     }
 
     /**
