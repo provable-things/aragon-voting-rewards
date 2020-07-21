@@ -75,7 +75,7 @@ contract VotingRewards is AragonApp {
 
     Vault public baseVault;
     Vault public rewardsVault;
-    DandelionVoting public voting;
+    DandelionVoting public dandelionVoting;
 
     address public rewardToken;
     uint256 public percentageReward;
@@ -95,9 +95,13 @@ contract VotingRewards is AragonApp {
 
     event BaseVaultChanged(address baseVault);
     event RewardsVaultChanged(address rewardsVault);
-    event VotingChanged(address voting);
+    event DandelionVotingChanged(address dandelionVoting);
     event PercentageRewardChanged(uint256 percentageReward);
-    event RewardDistributed(address beneficiary, uint256 amount, uint64 lockTime);
+    event RewardDistributed(
+        address beneficiary,
+        uint256 amount,
+        uint64 lockTime
+    );
     event RewardCollected(address beneficiary, uint256 amount);
     event EpochDurationChanged(uint64 epochDuration);
     event MissingVoteThresholdChanged(uint256 missingVotesThreshold);
@@ -110,7 +114,7 @@ contract VotingRewards is AragonApp {
      * @notice Initialize VotingRewards app contract
      * @param _baseVault Vault address from which token are taken
      * @param _rewardsVault Vault address to which token are put
-     * @param _voting DandelionVoting address
+     * @param _dandelionVoting DandelionVoting address
      * @param _rewardToken Accepted token address
      * @param _epochDuration number of blocks for which an epoch is opened
      * @param _percentageReward percentage of a reward expressed as a number between 10^16 and 10^18
@@ -120,7 +124,7 @@ contract VotingRewards is AragonApp {
     function initialize(
         address _baseVault,
         address _rewardsVault,
-        address _voting,
+        address _dandelionVoting,
         address _rewardToken,
         uint64 _epochDuration,
         uint256 _percentageReward,
@@ -129,7 +133,7 @@ contract VotingRewards is AragonApp {
     ) external onlyInit {
         require(isContract(_baseVault), ERROR_ADDRESS_NOT_CONTRACT);
         require(isContract(_rewardsVault), ERROR_ADDRESS_NOT_CONTRACT);
-        require(isContract(_voting), ERROR_ADDRESS_NOT_CONTRACT);
+        require(isContract(_dandelionVoting), ERROR_ADDRESS_NOT_CONTRACT);
         require(isContract(_rewardToken), ERROR_ADDRESS_NOT_CONTRACT);
         require(_percentageReward <= PCT_BASE, ERROR_PERCENTAGE_REWARD);
         require(_lockTime >= 0, ERROR_WRONG_VALUE);
@@ -137,7 +141,7 @@ contract VotingRewards is AragonApp {
 
         baseVault = Vault(_baseVault);
         rewardsVault = Vault(_rewardsVault);
-        voting = DandelionVoting(_voting);
+        dandelionVoting = DandelionVoting(_dandelionVoting);
         rewardToken = _rewardToken;
         epochDuration = _epochDuration;
         percentageReward = _percentageReward;
@@ -159,7 +163,10 @@ contract VotingRewards is AragonApp {
         external
         auth(OPEN_REWARD_DISTRIBUTION_ROLE)
     {
-        require(!isDistributionOpen, ERROR_EPOCH_REWARD_DISTRIBUTION_ALREADY_OPENED);
+        require(
+            !isDistributionOpen,
+            ERROR_EPOCH_REWARD_DISTRIBUTION_ALREADY_OPENED
+        );
         require(_fromBlock > lastRewardDistributionBlock, ERROR_EPOCH);
         require(
             getBlockNumber64() - lastRewardDistributionBlock > epochDuration,
@@ -169,7 +176,10 @@ contract VotingRewards is AragonApp {
         fromBlock = _fromBlock;
         isDistributionOpen = true;
 
-        emit RewardDistributionEpochOpened(_fromBlock, _fromBlock + epochDuration);
+        emit RewardDistributionEpochOpened(
+            _fromBlock,
+            _fromBlock + epochDuration
+        );
     }
 
     /**
@@ -198,7 +208,7 @@ contract VotingRewards is AragonApp {
         external
         auth(DISTRIBUTE_REWARD_ROLE)
     {
-        require(voting.votesLength() > 0, ERROR_VOTING_NO_VOTES);
+        require(dandelionVoting.votesLength() > 0, ERROR_VOTING_NO_VOTES);
         require(isDistributionOpen, ERROR_EPOCH_REWARD_DISTRIBUTION_NOT_OPENED);
 
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
@@ -218,8 +228,8 @@ contract VotingRewards is AragonApp {
     }
 
     /**
-     * @notice Change minimum number of seconds to claim voting rewards
-     * @param _epochDuration number of seconds minimun to claim access to voting rewards
+     * @notice Change minimum number of seconds to claim dandelionVoting rewards
+     * @param _epochDuration number of seconds minimun to claim access to dandelionVoting rewards
      */
     function changeEpochDuration(uint64 _epochDuration)
         external
@@ -233,7 +243,7 @@ contract VotingRewards is AragonApp {
 
     /**
      * @notice Change minimum number of missing votes allowed
-     * @param _missingVotesThreshold number of seconds minimun to claim access to voting rewards
+     * @param _missingVotesThreshold number of seconds minimun to claim access to dandelionVoting rewards
      */
     function changeMissingVotesThreshold(uint256 _missingVotesThreshold)
         external
@@ -287,14 +297,17 @@ contract VotingRewards is AragonApp {
     }
 
     /**
-     * @notice Change DandelionVoting
-     * @param _voting new voting address
+     * @notice Change Dandelion Voting contract address
+     * @param _dandelionVoting new dandelionVoting address
      */
-    function changeVoting(address _voting) external auth(CHANGE_VOTING_ROLE) {
-        require(isContract(_voting), ERROR_ADDRESS_NOT_CONTRACT);
-        voting = DandelionVoting(_voting);
+    function changeDandelionVotingContract(address _dandelionVoting)
+        external
+        auth(CHANGE_VOTING_ROLE)
+    {
+        require(isContract(_dandelionVoting), ERROR_ADDRESS_NOT_CONTRACT);
+        dandelionVoting = DandelionVoting(_dandelionVoting);
 
-        emit VotingChanged(_voting);
+        emit DandelionVotingChanged(_dandelionVoting);
     }
 
     /**
@@ -421,7 +434,7 @@ contract VotingRewards is AragonApp {
         uint64 _to,
         uint256 _missingVotesThreshold
     ) internal view returns (uint256 balance) {
-        MiniMeToken token = MiniMeToken(voting.token());
+        MiniMeToken token = MiniMeToken(dandelionVoting.token());
 
         uint256 missingVotes = 0;
         uint256 minimunBalance = token.balanceOfAt(
@@ -430,15 +443,19 @@ contract VotingRewards is AragonApp {
         );
 
         // voteId starts from 1 in DandelionVoting
-        for (uint256 voteId = voting.votesLength(); voteId > 1; voteId--) {
+        for (
+            uint256 voteId = dandelionVoting.votesLength();
+            voteId > 1;
+            voteId--
+        ) {
             uint64 startBlock;
-            (, , startBlock, , , , , , , , ) = voting.getVote(voteId.sub(1));
+            (, , startBlock, , , , , , , , ) = dandelionVoting.getVote(
+                voteId.sub(1)
+            );
 
             if (startBlock >= _from && startBlock <= _to) {
-                DandelionVoting.VoterState state = voting.getVoterState(
-                    voteId.sub(1),
-                    _beneficiary
-                );
+                DandelionVoting.VoterState state = dandelionVoting
+                    .getVoterState(voteId.sub(1), _beneficiary);
 
                 if (state == DandelionVoting.VoterState.Absent) {
                     missingVotes = missingVotes.add(1);

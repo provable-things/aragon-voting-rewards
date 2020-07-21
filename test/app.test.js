@@ -274,7 +274,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
     })
 
     it('Should set correct variables', async () => {
-      const actualVoting = await votingReward.voting()
+      const actualVoting = await votingReward.dandelionVoting()
       const actualBaseVault = await votingReward.baseVault()
       const actualRewardVault = await votingReward.rewardsVault()
       const actualRewardToken = await votingReward.rewardToken()
@@ -380,11 +380,14 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         baseVault.address
       )
 
-      receipt = await votingReward.changeVoting(baseVault.address, {
-        from: appManager,
-      })
+      receipt = await votingReward.changeDandelionVotingContract(
+        baseVault.address,
+        {
+          from: appManager,
+        }
+      )
       assert.strictEqual(
-        getEventArgument(receipt, 'VotingChanged', 'voting'),
+        getEventArgument(receipt, 'DandelionVotingChanged', 'dandelionVoting'),
         baseVault.address
       )
 
@@ -438,7 +441,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
 
       const actualBaseVault = await votingReward.baseVault()
       const actualRewardVault = await votingReward.rewardsVault()
-      const actualVoting = await votingReward.voting()
+      const actualVoting = await votingReward.dandelionVoting()
       const actualEpochDuration = parseInt(await votingReward.epochDuration())
       const actualPercentageReward = await votingReward.percentageReward()
       const actualLockTime = await votingReward.lockTime()
@@ -488,7 +491,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
 
     it('Should not be able to set a new Voting because of no permission', async () => {
       await assertRevert(
-        votingReward.changeVoting(baseVault.address, {
+        votingReward.changeDandelionVotingContract(baseVault.address, {
           from: appManager,
         }),
         'APP_AUTH_FAILED'
