@@ -613,6 +613,13 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         )
       })
 
+      it('Should not be able to close distribution since it is not opened', async () => {
+        await assertRevert(
+          closeRewardDistributionForCurrentEpoch(votingReward, appManager),
+          'VOTING_REWARD_EPOCH_REWARD_DISTRIBUTION_NOT_OPENED'
+        )
+      })
+
       it('Should not be able to open a distribition because fromBlock is less than last distribition', async () => {
         const numVotes = 10
         const fromBlock = await now()
@@ -705,6 +712,50 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
             parseInt(intialBalances[account]) + expectedRewardSingleUser
           )
         }
+      }).timeout(200000)
+
+      it('Should not be able to close a reward distribution twice', async () => {
+        const numVotes = 10
+        const fromBlock = await now()
+
+        const intialBalances = await getAccountsBalance(accounts, rewardToken)
+        const expectedReward = await getTotalReward(
+          accounts,
+          miniMeToken,
+          PERCENTAGE_REWARD
+        )
+        // it works because users have the same balance of miniMeToken
+        const expectedRewardSingleUser = expectedReward / accounts.length
+
+        for (let voteId = 1; voteId <= numVotes; voteId++) {
+          await newVote(
+            voting,
+            executionTarget.address,
+            executionTarget.contract.methods.execute().encodeABI(),
+            appManager
+          )
+
+          for (let account of accounts) {
+            await mineBlocks(ONE_BLOCK)
+            await vote(voting, voteId, account)
+            // in order (if works) to have the minimun equal to expectedReward since balance increase
+            await miniMeToken.generateTokens(account, 10)
+          }
+        }
+
+        await mineBlocks(EPOCH_BLOCKS)
+        await openRewardDistributionForEpoch(
+          votingReward,
+          fromBlock,
+          appManager
+        )
+
+        await distributeRewardForAll(votingReward, accounts, appManager, 5)
+        await closeRewardDistributionForCurrentEpoch(votingReward, appManager)
+        assertRevert(
+          closeRewardDistributionForCurrentEpoch(votingReward, appManager),
+          'VOTING_REWARD_EPOCH_REWARD_DISTRIBUTION_NOT_OPENED'
+        )
       }).timeout(200000)
 
       it('Should be able to collect rewards but not distributing for who partecipated actively in voting because a LOCK_TIME_BLOCKS period is not passed,', async () => {
