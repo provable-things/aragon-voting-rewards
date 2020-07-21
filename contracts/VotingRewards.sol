@@ -19,17 +19,17 @@ contract VotingRewards is AragonApp {
     // prettier-ignore
     bytes32 public constant CHANGE_EPOCH_DURATION_ROLE = keccak256("CHANGE_EPOCH_DURATION_ROLE");
     // prettier-ignore
-    bytes32 public constant CHANGE_REWARDS_TOKEN_ROLE = keccak256("CHANGE_REWARDS_TOKEN_ROLE");
+    bytes32 public constant CHANGE_REWARD_TOKEN_ROLE = keccak256("CHANGE_REWARD_TOKEN_ROLE");
     // prettier-ignore
     bytes32 public constant CHANGE_MISSING_VOTES_THRESHOLD_ROLE = keccak256("CHANGE_MISSING_VOTES_THRESHOLD_ROLE");
     // prettier-ignore
     bytes32 public constant CHANGE_LOCK_TIME_ROLE = keccak256("CHANGE_LOCK_TIME_ROLE");
     // prettier-ignore
-    bytes32 public constant OPEN_REWARDS_DISTRIBUTION_ROLE = keccak256("OPEN_REWARDS_DISTRIBUTION_ROLE");
+    bytes32 public constant OPEN_REWARD_DISTRIBUTION_ROLE = keccak256("OPEN_REWARD_DISTRIBUTION_ROLE");
     // prettier-ignore
-    bytes32 public constant CLOSE_REWARDS_DISTRIBUTION_ROLE = keccak256("CLOSE_REWARDS_DISTRIBUTION_ROLE");
+    bytes32 public constant CLOSE_REWARD_DISTRIBUTION_ROLE = keccak256("CLOSE_REWARD_DISTRIBUTION_ROLE");
     // prettier-ignore
-    bytes32 public constant DISTRIBUTE_REWARDS_ROLE = keccak256("DISTRIBUTE_REWARDS_ROLE");
+    bytes32 public constant DISTRIBUTE_REWARD_ROLE = keccak256("DISTRIBUTE_REWARD_ROLE");
     // prettier-ignore
     bytes32 public constant CHANGE_PERCENTAGE_REWARD_ROLE = keccak256("CHANGE_PERCENTAGE_REWARD_ROLE");
     // prettier-ignore
@@ -56,9 +56,9 @@ contract VotingRewards is AragonApp {
     // prettier-ignore
     string private constant ERROR_PERCENTAGE_REWARD = "VOTING_REWARD_PERCENTAGE_REWARD";
     // prettier-ignore
-    string private constant ERROR_EPOCH_DISTRIBUTION_NOT_OPENED = "VOTING_REWARD_EPOCH_DISTRIBUTION_NOT_OPENED";
+    string private constant ERROR_EPOCH_REWARD_DISTRIBUTION_NOT_OPENED = "VOTING_REWARD_EPOCH_REWARD_DISTRIBUTION_NOT_OPENED";
     // prettier-ignore
-    string private constant ERROR_EPOCH_DISTRIBUTION_ALREADY_OPENED = "VOTING_REWARD_EPOCH_DISTRIBUTION_ALREADY_OPENED";
+    string private constant ERROR_EPOCH_REWARD_DISTRIBUTION_ALREADY_OPENED = "VOTING_REWARD_EPOCH_REWARD_DISTRIBUTION_ALREADY_OPENED";
     // prettier-ignore
     string private constant ERROR_WRONG_VALUE = "VOTING_REWARD_WRONG_VALUE";
     // prettier-ignore
@@ -77,7 +77,7 @@ contract VotingRewards is AragonApp {
     Vault public rewardsVault;
     DandelionVoting public voting;
 
-    address public rewardsToken;
+    address public rewardToken;
     uint256 public percentageReward;
     uint256 public missingVotesThreshold;
 
@@ -85,12 +85,12 @@ contract VotingRewards is AragonApp {
     uint64 public currentEpoch;
     uint64 public fromBlock;
     uint64 public lockTime;
-    uint64 public lastDistributionBlock;
+    uint64 public lastRewardDistributionBlock;
     uint64 private deployBlock;
 
-    bool public isClaimOpened;
+    bool public isDistributionOpen;
 
-    mapping(address => uint64) private lasBlockDistributedRewards;
+    mapping(address => uint64) private lasBlockDistributedReward;
     mapping(address => Reward[]) public addressRewards;
 
     event BaseVaultChanged(address baseVault);
@@ -104,14 +104,14 @@ contract VotingRewards is AragonApp {
     event LockTimeChanged(uint64 amount);
     event ClaimEpochOpened(uint64 start, uint64 end);
     event ClaimEpochClosed(uint64 date);
-    event RewardsTokenChanged(address addr);
+    event RewardTokenChanged(address addr);
 
     /**
      * @notice Initialize VotingRewards app contract
      * @param _baseVault Vault address from which token are taken
      * @param _rewardsVault Vault address to which token are put
      * @param _voting DandelionVoting address
-     * @param _rewardsToken Accepted token address
+     * @param _rewardToken Accepted token address
      * @param _epochDuration number of blocks for which an epoch is opened
      * @param _percentageReward percentage of a reward expressed as a number between 10^16 and 10^18
      * @param _lockTime number of blocks for which token will be locked after colleting reward
@@ -121,7 +121,7 @@ contract VotingRewards is AragonApp {
         address _baseVault,
         address _rewardsVault,
         address _voting,
-        address _rewardsToken,
+        address _rewardToken,
         uint64 _epochDuration,
         uint256 _percentageReward,
         uint64 _lockTime,
@@ -130,7 +130,7 @@ contract VotingRewards is AragonApp {
         require(isContract(_baseVault), ERROR_ADDRESS_NOT_CONTRACT);
         require(isContract(_rewardsVault), ERROR_ADDRESS_NOT_CONTRACT);
         require(isContract(_voting), ERROR_ADDRESS_NOT_CONTRACT);
-        require(isContract(_rewardsToken), ERROR_ADDRESS_NOT_CONTRACT);
+        require(isContract(_rewardToken), ERROR_ADDRESS_NOT_CONTRACT);
         require(_percentageReward <= PCT_BASE, ERROR_PERCENTAGE_REWARD);
         require(_lockTime >= 0, ERROR_WRONG_VALUE);
         require(_missingVotesThreshold >= 0, ERROR_WRONG_VALUE);
@@ -138,78 +138,78 @@ contract VotingRewards is AragonApp {
         baseVault = Vault(_baseVault);
         rewardsVault = Vault(_rewardsVault);
         voting = DandelionVoting(_voting);
-        rewardsToken = _rewardsToken;
+        rewardToken = _rewardToken;
         epochDuration = _epochDuration;
         percentageReward = _percentageReward;
         missingVotesThreshold = _missingVotesThreshold;
         lockTime = _lockTime;
 
         deployBlock = getBlockNumber64();
-        lastDistributionBlock = getBlockNumber64();
+        lastRewardDistributionBlock = getBlockNumber64();
         currentEpoch = 0;
 
         initialized();
     }
 
     /**
-     * @notice Open the claim for the current epoch from _fromBlock
+     * @notice Open the distribution for the current epoch from _fromBlock
      * @param _fromBlock block from which starting to look for rewards
      */
-    function openDistributionForEpoch(uint64 _fromBlock)
+    function openRewardDistributionForEpoch(uint64 _fromBlock)
         external
-        auth(OPEN_REWARDS_DISTRIBUTION_ROLE)
+        auth(OPEN_REWARD_DISTRIBUTION_ROLE)
     {
-        require(!isClaimOpened, ERROR_EPOCH_DISTRIBUTION_ALREADY_OPENED);
-        require(_fromBlock > lastDistributionBlock, ERROR_EPOCH);
+        require(!isDistributionOpen, ERROR_EPOCH_REWARD_DISTRIBUTION_ALREADY_OPENED);
+        require(_fromBlock > lastRewardDistributionBlock, ERROR_EPOCH);
         require(
-            getBlockNumber64() - lastDistributionBlock > epochDuration,
+            getBlockNumber64() - lastRewardDistributionBlock > epochDuration,
             ERROR_EPOCH
         );
 
         fromBlock = _fromBlock;
-        isClaimOpened = true;
+        isDistributionOpen = true;
 
         emit ClaimEpochOpened(_fromBlock, _fromBlock + epochDuration);
     }
 
     /**
-     * @notice close distribution for current epoch if it's opened and starts a new one
+     * @notice close distribution for thee current epoch if it's opened and starts a new one
      */
-    function closeDistributionForCurrentEpoch()
+    function closeRewardDistributionForCurrentEpoch()
         external
-        auth(CLOSE_REWARDS_DISTRIBUTION_ROLE)
+        auth(CLOSE_REWARD_DISTRIBUTION_ROLE)
     {
-        isClaimOpened = false;
+        isDistributionOpen = false;
         currentEpoch = currentEpoch.add(1);
-        lastDistributionBlock = getBlockNumber64();
-        emit ClaimEpochClosed(lastDistributionBlock);
+        lastRewardDistributionBlock = getBlockNumber64();
+        emit ClaimEpochClosed(lastRewardDistributionBlock);
     }
 
     /**
-     * @notice collect rewards for a list of address. Tokens are locked for lockTime in rewardsVault
+     * @notice distribute rewards for a list of address. Tokens are locked for lockTime in rewardsVault
      * @param _beneficiaries address that are looking for reward
      * @dev this function should be called from outside each _epochDuration seconds
      */
-    function distributeRewardsForAll(address[] _beneficiaries)
+    function distributeRewardForAll(address[] _beneficiaries)
         external
-        auth(DISTRIBUTE_REWARDS_ROLE)
+        auth(DISTRIBUTE_REWARD_ROLE)
     {
         require(voting.votesLength() > 0, ERROR_VOTING_NO_VOTES);
-        require(isClaimOpened, ERROR_EPOCH_DISTRIBUTION_NOT_OPENED);
+        require(isDistributionOpen, ERROR_EPOCH_REWARD_DISTRIBUTION_NOT_OPENED);
 
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
-            distributeRewardsFor(_beneficiaries[i]);
+            distributeRewardFor(_beneficiaries[i]);
         }
     }
 
     /**
-     * @notice distribute rewards for a list of address
+     * @notice collect rewards for a list of address
      *         if lockTime is passed since when tokens have been distributed
      * @param _beneficiaries addresses that should be fund with rewards
      */
-    function collectRewardsForAll(address[] _beneficiaries) external {
+    function collectRewardForAll(address[] _beneficiaries) external {
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
-            collectRewardsFor(_beneficiaries[i]);
+            collectRewardFor(_beneficiaries[i]);
         }
     }
 
@@ -298,7 +298,7 @@ contract VotingRewards is AragonApp {
      * @notice Change percentage reward
      * @param _percentageReward new percentage
      */
-    function changePercentageRewards(uint256 _percentageReward)
+    function changePercentageReward(uint256 _percentageReward)
         external
         auth(CHANGE_PERCENTAGE_REWARD_ROLE)
     {
@@ -310,16 +310,16 @@ contract VotingRewards is AragonApp {
 
     /**
      * @notice Change rewards token
-     * @param _rewardsToken new percentage
+     * @param _rewardToken new percentage
      */
-    function changeRewardsToken(address _rewardsToken)
+    function changeRewardToken(address _rewardToken)
         external
         auth(CHANGE_PERCENTAGE_REWARD_ROLE)
     {
-        require(isContract(_rewardsToken), ERROR_ADDRESS_NOT_CONTRACT);
-        rewardsToken = _rewardsToken;
+        require(isContract(_rewardToken), ERROR_ADDRESS_NOT_CONTRACT);
+        rewardToken = _rewardToken;
 
-        emit RewardsTokenChanged(rewardsToken);
+        emit RewardTokenChanged(rewardToken);
     }
 
     /**
@@ -338,15 +338,15 @@ contract VotingRewards is AragonApp {
      * @param _beneficiary address to which the deposit will be transferred if successful
      * @dev baseVault should have TRANSFER_ROLE permission
      */
-    function distributeRewardsFor(address _beneficiary)
+    function distributeRewardFor(address _beneficiary)
         public
-        auth(DISTRIBUTE_REWARDS_ROLE)
+        auth(DISTRIBUTE_REWARD_ROLE)
     {
-        require(isClaimOpened, ERROR_EPOCH_DISTRIBUTION_NOT_OPENED);
+        require(isDistributionOpen, ERROR_EPOCH_REWARD_DISTRIBUTION_NOT_OPENED);
 
         uint64 lastBlockDistributedReward = 0;
-        if (lasBlockDistributedRewards[_beneficiary] != 0) {
-            lastBlockDistributedReward = lasBlockDistributedRewards[_beneficiary];
+        if (lasBlockDistributedReward[_beneficiary] != 0) {
+            lastBlockDistributedReward = lasBlockDistributedReward[_beneficiary];
         } else {
             lastBlockDistributedReward = deployBlock;
         }
@@ -365,22 +365,22 @@ contract VotingRewards is AragonApp {
             missingVotesThreshold
         );
 
-        lasBlockDistributedRewards[_beneficiary] = getBlockNumber64();
+        lasBlockDistributedReward[_beneficiary] = getBlockNumber64();
 
         addressRewards[_beneficiary].push(
             Reward(reward, RewardState.Unlocked, getBlockNumber64(), lockTime)
         );
 
-        baseVault.transfer(rewardsToken, rewardsVault, reward);
+        baseVault.transfer(rewardToken, rewardsVault, reward);
         emit RewardLocked(_beneficiary, reward, lockTime);
     }
 
     /**
-     * @notice distribute rewards for an address if lockTime is passed since when tokens have been distributed
+     * @notice collect rewards for an address if lockTime is passed since when tokens have been distributed
      * @param _beneficiary address that should be fund with rewards
      * @dev rewardsVault should have TRANSFER_ROLE permission
      */
-    function collectRewardsFor(address _beneficiary) public {
+    function collectRewardFor(address _beneficiary) public {
         uint64 timestamp = getBlockNumber64();
         // prettier-ignore
         Reward[] storage rewards = addressRewards[_beneficiary];
@@ -389,7 +389,7 @@ contract VotingRewards is AragonApp {
         for (uint256 i = 0; i < rewards.length; i++) {
             if (timestamp - rewards[i].lockBlock > rewards[i].lockTime) {
                 rewardsVault.transfer(
-                    rewardsToken,
+                    rewardToken,
                     _beneficiary,
                     rewards[i].amount
                 );

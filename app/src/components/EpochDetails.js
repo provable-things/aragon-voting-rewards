@@ -19,7 +19,7 @@ import {
 import { strip } from '../utils/amount-utils'
 
 const EpochDetails = (_props) => {
-  const { rewardsToken, votes, rewards, epoch, account } = _props
+  const { rewardToken, votes, rewards, epoch, account } = _props
 
   const theme = useTheme()
 
@@ -130,7 +130,7 @@ const EpochDetails = (_props) => {
               color: ${theme.info};
             `}
           >
-            {rewardsToken ? ` ${rewardsToken.symbol}` : '-'}
+            {rewardToken ? ` ${rewardToken.symbol}` : '-'}
           </TokenSymbol>
         </DetailValue>
       </Detail>
@@ -147,7 +147,7 @@ const EpochDetails = (_props) => {
               color: ${theme.info};
             `}
           >
-            {rewardsToken ? ` ${rewardsToken.symbol}` : '-'}
+            {rewardToken ? ` ${rewardToken.symbol}` : '-'}
           </TokenSymbol>
         </DetailValue>
       </Detail>
@@ -257,7 +257,7 @@ const Detail = styled.div`
 `
 
 EpochDetails.propTypes = {
-  rewardsToken: PropTypes.object,
+  rewardToken: PropTypes.object,
   rewards: PropTypes.array,
   votes: PropTypes.array,
   epoch: PropTypes.object,

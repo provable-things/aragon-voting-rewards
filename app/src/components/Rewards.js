@@ -7,11 +7,11 @@ import { UNLOCKED, WITHDRAWN } from '../utils/rewards-utils'
 import { parseSeconds } from '../utils/time-utils'
 
 const Rewards = (_props) => {
-  const { rewards, rewardsToken } = _props
+  const { rewards, rewardToken } = _props
 
   const now = new Date().getTime() / 1000
 
-  return rewards && rewards.length > 0 && rewardsToken ? (
+  return rewards && rewards.length > 0 && rewardToken ? (
     <Table
       header={
         <TableRow>
@@ -24,7 +24,7 @@ const Rewards = (_props) => {
           <TableRow key={_index}>
             <TableCell>
               <Text>{`${strip(amount.toString())} ${
-                rewardsToken.symbol
+                rewardToken.symbol
               }`}</Text>
             </TableCell>
             <TableCell>
@@ -54,7 +54,7 @@ const Rewards = (_props) => {
 
 Rewards.propTypes = {
   rewards: PropTypes.array,
-  rewardsToken: PropTypes.object,
+  rewardToken: PropTypes.object,
 }
 
 export default Rewards

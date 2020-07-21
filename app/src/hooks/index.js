@@ -7,7 +7,7 @@ const useCollectRewardAction = () => {
   return useCallback(
     (_receiver) => {
       try {
-        api.collectRewardsFor(_receiver).toPromise()
+        api.collectRewardFor(_receiver).toPromise()
       } catch (error) {
         console.error(error)
       }
@@ -23,11 +23,11 @@ const useAppLogic = () => {
     voting,
     baseVault,
     rewardsVault,
-    rewardsToken,
+    rewardToken,
     votingToken,
     isSyncing,
     epoch,
-    percentageRewards,
+    percentageReward,
     votes,
     rewards,
   } = useAppState()
@@ -44,9 +44,9 @@ const useAppLogic = () => {
     voting,
     baseVault,
     rewardsVault,
-    rewardsToken,
+    rewardToken,
     epoch,
-    percentageRewards,
+    percentageReward,
     votes,
     rewards,
     votingToken,

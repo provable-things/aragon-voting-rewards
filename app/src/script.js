@@ -99,8 +99,8 @@ async function initialize(_initParams) {
 function initializeState(_initParams) {
   return async (_cachedState) => {
     try {
-      const rewardsTokenAddress = await app.call('rewardsToken').toPromise()
-      const rewardsToken = await getTokenData(rewardsTokenAddress)
+      const rewardsTokenAddress = await app.call('rewardToken').toPromise()
+      const rewardToken = await getTokenData(rewardsTokenAddress)
 
       const votingContract = app.external(_initParams.votingAddress, VotingAbi)
       const votingTokenAddress = await votingContract.token().toPromise()
@@ -111,7 +111,7 @@ function initializeState(_initParams) {
       return {
         ..._initParams,
         ..._cachedState,
-        rewardsToken,
+        rewardToken,
         votingToken,
         epoch,
       }
@@ -182,13 +182,13 @@ const getTokenData = async (_tokenAddress) => {
 const getEpochData = async () => {
   try {
     // a new epoch starts when the rewards of the last epoch ends
-    const lastDistributionBlock = await app
-      .call('lastDistributionBlock')
+    const lastRewardDistributionBlock = await app
+      .call('lastRewardDistributionBlock')
       .toPromise()
 
     return {
-      startBlock: lastDistributionBlock,
-      startDate: await getBlockTimestamp(lastDistributionBlock),
+      startBlock: lastRewardDistributionBlock,
+      startDate: await getBlockTimestamp(lastRewardDistributionBlock),
       duration: await app.call('epochDuration').toPromise(),
       current: await app.call('currentEpoch').toPromise(),
       lockTime: await app.call('lockTime').toPromise(),

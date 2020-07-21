@@ -12,7 +12,7 @@ const App = () => {
     actions,
     votes,
     rewards,
-    rewardsToken,
+    rewardToken,
     epoch,
     account,
   } = useAppLogic()
@@ -44,7 +44,7 @@ const App = () => {
           <Row>
             <Col xs={12} xl={8}>
               <EpochDetails
-                rewardsToken={rewardsToken}
+                rewardToken={rewardToken}
                 votes={votes}
                 rewards={rewards}
                 epoch={epoch}
@@ -52,7 +52,7 @@ const App = () => {
               />
             </Col>
             <Col xs={12} xl={4} className="mt-3 mt-xl-0">
-              <Rewards rewardsToken={rewardsToken} rewards={rewards} />
+              <Rewards rewardToken={rewardToken} rewards={rewards} />
             </Col>
           </Row>
         </Fragment>

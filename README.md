@@ -56,7 +56,7 @@ yarn test
       ✓ Should revert when passed a negative missing votes threshold (231ms)
     initialize(address _baseVault, address _rewardsVault, address _voting, address _rewardToken, _uint64 _epochDuration, uint64 _percentageReward, uint64 _lockTime, uint256 _missingVotesThreshold)
       ✓ Should set correct variables (69ms)
-      ✓ Should set able to change baseVault, rewardsVault, voting, epochDuration, percentageReward, lockTime, missingVotesThreshold and rewardsToken (428ms)
+      ✓ Should set able to change baseVault, rewardsVault, voting, epochDuration, percentageReward, lockTime, missingVotesThreshold and rewardToken (428ms)
       ✓ Should not be able to set epoch because of no permission (44ms)
       ✓ Should not be able to set a new Base Vault because of no permission (42ms)
       ✓ Should not be able to set a new Reward Vault because of no permission (44ms)
