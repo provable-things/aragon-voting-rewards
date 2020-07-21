@@ -82,17 +82,17 @@ const distributeRewardsTo = (_votingReward, _beneficiary, _appManager) =>
     from: _appManager,
   })
 
-const openRewardDistributionForEpoch = (
+const openRewardsDistributionForEpoch = (
   _votingReward,
   _startFrom,
   _appManager
 ) =>
-  _votingReward.openRewardDistributionForEpoch(_startFrom, {
+  _votingReward.openRewardsDistributionForEpoch(_startFrom, {
     from: _appManager,
   })
 
-const closeRewardDistributionForCurrentEpoch = (_votingReward, _appManager) =>
-  _votingReward.closeRewardDistributionForCurrentEpoch({
+const closeRewardsDistributionForCurrentEpoch = (_votingReward, _appManager) =>
+  _votingReward.closeRewardsDistributionForCurrentEpoch({
     from: _appManager,
   })
 
@@ -123,8 +123,8 @@ module.exports = {
   collectRewardsForMany,
   newVote,
   vote,
-  openRewardDistributionForEpoch,
-  closeRewardDistributionForCurrentEpoch,
+  openRewardsDistributionForEpoch,
+  closeRewardsDistributionForCurrentEpoch,
   distributeRewardsTo,
   getAccountsBalance,
   getTotalReward,
