@@ -365,8 +365,6 @@ contract VotingRewards is AragonApp {
             missingVotesThreshold
         );
 
-        // TODO: understand if it's better to set the date
-        // equal to now(timestamp) or the most recent vote date
         lasBlockDistributedRewards[_beneficiary] = getBlockNumber64();
 
         addressRewards[_beneficiary].push(
