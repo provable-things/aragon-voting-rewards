@@ -25,13 +25,13 @@ contract VotingRewards is AragonApp {
     // prettier-ignore
     bytes32 public constant CHANGE_LOCK_TIME_ROLE = keccak256("CHANGE_LOCK_TIME_ROLE");
     // prettier-ignore
-    bytes32 public constant OPEN_REWARD_DISTRIBUTION_ROLE = keccak256("OPEN_REWARD_DISTRIBUTION_ROLE");
+    bytes32 public constant OPEN_REWARDS_DISTRIBUTION_ROLE = keccak256("OPEN_REWARDS_DISTRIBUTION_ROLE");
     // prettier-ignore
-    bytes32 public constant CLOSE_REWARD_DISTRIBUTION_ROLE = keccak256("CLOSE_REWARD_DISTRIBUTION_ROLE");
+    bytes32 public constant CLOSE_REWARDS_DISTRIBUTION_ROLE = keccak256("CLOSE_REWARDS_DISTRIBUTION_ROLE");
     // prettier-ignore
     bytes32 public constant DISTRIBUTE_REWARD_ROLE = keccak256("DISTRIBUTE_REWARD_ROLE");
     // prettier-ignore
-    bytes32 public constant CHANGE_PERCENTAGE_REWARD_ROLE = keccak256("CHANGE_PERCENTAGE_REWARD_ROLE");
+    bytes32 public constant CHANGE_PERCENTAGE_REWARDS_ROLE = keccak256("CHANGE_PERCENTAGE_REWARDS_ROLE");
     // prettier-ignore
     bytes32 public constant CHANGE_VAULT_ROLE = keccak256("CHANGE_VAULT_ROLE");
     // prettier-ignore
@@ -48,7 +48,7 @@ contract VotingRewards is AragonApp {
     // prettier-ignore
     string private constant ERROR_SENDER_NOT_VOTED = "VOTING_REWARD_NOT_VOTED";
     // prettier-ignore
-    string private constant ERROR_TOO_MUCH_MISSING_VOTES = "VOTING_REWARD_TOO_MUCH_MISSING_VOTES";
+    string private constant ERROR_TOO_MANY_MISSING_VOTES = "VOTING_REWARD_TOO_MANY_MISSING_VOTES";
     // prettier-ignore
     string private constant ERROR_EPOCH = "VOTING_REWARD_ERROR_EPOCH";
     // prettier-ignore
@@ -56,9 +56,9 @@ contract VotingRewards is AragonApp {
     // prettier-ignore
     string private constant ERROR_PERCENTAGE_REWARD = "VOTING_REWARD_PERCENTAGE_REWARD";
     // prettier-ignore
-    string private constant ERROR_EPOCH_REWARD_DISTRIBUTION_NOT_OPENED = "VOTING_REWARD_EPOCH_REWARD_DISTRIBUTION_NOT_OPENED";
+    string private constant ERROR_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED = "VOTING_REWARD_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED";
     // prettier-ignore
-    string private constant ERROR_EPOCH_REWARD_DISTRIBUTION_ALREADY_OPENED = "VOTING_REWARD_EPOCH_REWARD_DISTRIBUTION_ALREADY_OPENED";
+    string private constant ERROR_EPOCH_REWARDS_DISTRIBUTION_ALREADY_OPENED = "VOTING_REWARD_EPOCH_REWARDS_DISTRIBUTION_ALREADY_OPENED";
     // prettier-ignore
     string private constant ERROR_WRONG_VALUE = "VOTING_REWARD_WRONG_VALUE";
     // prettier-ignore
@@ -77,26 +77,26 @@ contract VotingRewards is AragonApp {
     Vault public rewardsVault;
     DandelionVoting public dandelionVoting;
 
-    address public rewardToken;
-    uint256 public percentageReward;
+    address public rewardsToken;
+    uint256 public percentageRewards;
     uint256 public missingVotesThreshold;
 
     uint64 public epochDuration;
     uint64 public currentEpoch;
     uint64 public startBlockNumberOfCurrentEpoch;
     uint64 public lockTime;
-    uint64 public lastRewardDistributionBlock;
+    uint64 public lastRewardsDistributionBlock;
     uint64 private deployBlock;
 
     bool public isDistributionOpen;
 
-    mapping(address => uint64) private previousRewardDistributionBlockNumber;
+    mapping(address => uint64) private previousRewardsDistributionBlockNumber;
     mapping(address => Reward[]) public addressRewards;
 
     event BaseVaultChanged(address baseVault);
     event RewardsVaultChanged(address rewardsVault);
     event DandelionVotingChanged(address dandelionVoting);
-    event PercentageRewardChanged(uint256 percentageReward);
+    event PercentageRewardsChanged(uint256 percentageRewards);
     event RewardDistributed(
         address beneficiary,
         uint256 amount,
@@ -106,18 +106,18 @@ contract VotingRewards is AragonApp {
     event EpochDurationChanged(uint64 epochDuration);
     event MissingVoteThresholdChanged(uint256 missingVotesThreshold);
     event LockTimeChanged(uint64 lockTime);
-    event RewardDistributionEpochOpened(uint64 startBlock, uint64 endBlock);
-    event RewardDistributionEpochClosed(uint64 rewardDistributionBlock);
-    event RewardTokenChanged(address rewardToken);
+    event RewardsDistributionEpochOpened(uint64 startBlock, uint64 endBlock);
+    event RewardsDistributionEpochClosed(uint64 rewardDistributionBlock);
+    event RewardsTokenChanged(address rewardsToken);
 
     /**
      * @notice Initialize VotingRewards app contract
      * @param _baseVault Vault address from which token are taken
      * @param _rewardsVault Vault address to which token are put
      * @param _dandelionVoting DandelionVoting address
-     * @param _rewardToken Accepted token address
+     * @param _rewardsToken Accepted token address
      * @param _epochDuration number of blocks for which an epoch is opened
-     * @param _percentageReward percentage of a reward expressed as a number between 10^16 and 10^18
+     * @param _percentageRewards percentage of a reward expressed as a number between 10^16 and 10^18
      * @param _lockTime number of blocks for which token will be locked after colleting reward
      * @param _missingVotesThreshold number of missing votes allowed in an epoch
      */
@@ -125,31 +125,31 @@ contract VotingRewards is AragonApp {
         address _baseVault,
         address _rewardsVault,
         address _dandelionVoting,
-        address _rewardToken,
+        address _rewardsToken,
         uint64 _epochDuration,
-        uint256 _percentageReward,
+        uint256 _percentageRewards,
         uint64 _lockTime,
         uint256 _missingVotesThreshold
     ) external onlyInit {
         require(isContract(_baseVault), ERROR_ADDRESS_NOT_CONTRACT);
         require(isContract(_rewardsVault), ERROR_ADDRESS_NOT_CONTRACT);
         require(isContract(_dandelionVoting), ERROR_ADDRESS_NOT_CONTRACT);
-        require(isContract(_rewardToken), ERROR_ADDRESS_NOT_CONTRACT);
-        require(_percentageReward <= PCT_BASE, ERROR_PERCENTAGE_REWARD);
+        require(isContract(_rewardsToken), ERROR_ADDRESS_NOT_CONTRACT);
+        require(_percentageRewards <= PCT_BASE, ERROR_PERCENTAGE_REWARD);
         require(_lockTime >= 0, ERROR_WRONG_VALUE);
         require(_missingVotesThreshold >= 0, ERROR_WRONG_VALUE);
 
         baseVault = Vault(_baseVault);
         rewardsVault = Vault(_rewardsVault);
         dandelionVoting = DandelionVoting(_dandelionVoting);
-        rewardToken = _rewardToken;
+        rewardsToken = _rewardsToken;
         epochDuration = _epochDuration;
-        percentageReward = _percentageReward;
+        percentageRewards = _percentageRewards;
         missingVotesThreshold = _missingVotesThreshold;
         lockTime = _lockTime;
 
         deployBlock = getBlockNumber64();
-        lastRewardDistributionBlock = getBlockNumber64();
+        lastRewardsDistributionBlock = getBlockNumber64();
         currentEpoch = 0;
 
         initialized();
@@ -159,24 +159,24 @@ contract VotingRewards is AragonApp {
      * @notice Open the distribution for the current epoch from _fromBlock
      * @param _fromBlock block from which starting to look for rewards
      */
-    function openRewardDistributionForEpoch(uint64 _fromBlock)
+    function openRewardsDistributionForEpoch(uint64 _fromBlock)
         external
-        auth(OPEN_REWARD_DISTRIBUTION_ROLE)
+        auth(OPEN_REWARDS_DISTRIBUTION_ROLE)
     {
         require(
             !isDistributionOpen,
-            ERROR_EPOCH_REWARD_DISTRIBUTION_ALREADY_OPENED
+            ERROR_EPOCH_REWARDS_DISTRIBUTION_ALREADY_OPENED
         );
-        require(_fromBlock > lastRewardDistributionBlock, ERROR_EPOCH);
+        require(_fromBlock > lastRewardsDistributionBlock, ERROR_EPOCH);
         require(
-            getBlockNumber64() - lastRewardDistributionBlock > epochDuration,
+            getBlockNumber64() - lastRewardsDistributionBlock > epochDuration,
             ERROR_EPOCH
         );
 
         startBlockNumberOfCurrentEpoch = _fromBlock;
         isDistributionOpen = true;
 
-        emit RewardDistributionEpochOpened(
+        emit RewardsDistributionEpochOpened(
             _fromBlock,
             _fromBlock + epochDuration
         );
@@ -185,18 +185,18 @@ contract VotingRewards is AragonApp {
     /**
      * @notice close distribution for thee current epoch if it's opened and starts a new one
      */
-    function closeRewardDistributionForCurrentEpoch()
+    function closeRewardsDistributionForCurrentEpoch()
         external
-        auth(CLOSE_REWARD_DISTRIBUTION_ROLE)
+        auth(CLOSE_REWARDS_DISTRIBUTION_ROLE)
     {
         require(
             isDistributionOpen == true,
-            ERROR_EPOCH_REWARD_DISTRIBUTION_NOT_OPENED
+            ERROR_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED
         );
         isDistributionOpen = false;
         currentEpoch = currentEpoch.add(1);
-        lastRewardDistributionBlock = getBlockNumber64();
-        emit RewardDistributionEpochClosed(lastRewardDistributionBlock);
+        lastRewardsDistributionBlock = getBlockNumber64();
+        emit RewardsDistributionEpochClosed(lastRewardsDistributionBlock);
     }
 
     /**
@@ -209,7 +209,10 @@ contract VotingRewards is AragonApp {
         auth(DISTRIBUTE_REWARD_ROLE)
     {
         require(dandelionVoting.votesLength() > 0, ERROR_VOTING_NO_VOTES);
-        require(isDistributionOpen, ERROR_EPOCH_REWARD_DISTRIBUTION_NOT_OPENED);
+        require(
+            isDistributionOpen,
+            ERROR_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED
+        );
 
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
             distributeRewardsTo(_beneficiaries[i]);
@@ -312,31 +315,31 @@ contract VotingRewards is AragonApp {
 
     /**
      * @notice Change percentage reward
-     * @param _percentageReward new percentage
+     * @param _percentageRewards new percentage
      * @dev PCT_BASE is the maximun allowed percentage
      */
-    function changePercentageReward(uint256 _percentageReward)
+    function changePercentageReward(uint256 _percentageRewards)
         external
-        auth(CHANGE_PERCENTAGE_REWARD_ROLE)
+        auth(CHANGE_PERCENTAGE_REWARDS_ROLE)
     {
-        require(_percentageReward <= PCT_BASE, ERROR_PERCENTAGE_REWARD);
-        percentageReward = _percentageReward;
+        require(_percentageRewards <= PCT_BASE, ERROR_PERCENTAGE_REWARD);
+        percentageRewards = _percentageRewards;
 
-        emit PercentageRewardChanged(percentageReward);
+        emit PercentageRewardsChanged(percentageRewards);
     }
 
     /**
      * @notice Change rewards token
-     * @param _rewardToken new percentage
+     * @param _rewardsToken new percentage
      */
-    function changeRewardTokenContractAddress(address _rewardToken)
+    function changeRewardsTokenContractAddress(address _rewardsToken)
         external
-        auth(CHANGE_PERCENTAGE_REWARD_ROLE)
+        auth(CHANGE_PERCENTAGE_REWARDS_ROLE)
     {
-        require(isContract(_rewardToken), ERROR_ADDRESS_NOT_CONTRACT);
-        rewardToken = _rewardToken;
+        require(isContract(_rewardsToken), ERROR_ADDRESS_NOT_CONTRACT);
+        rewardsToken = _rewardsToken;
 
-        emit RewardTokenChanged(rewardToken);
+        emit RewardsTokenChanged(rewardsToken);
     }
 
     /**
@@ -362,11 +365,14 @@ contract VotingRewards is AragonApp {
         public
         auth(DISTRIBUTE_REWARD_ROLE)
     {
-        require(isDistributionOpen, ERROR_EPOCH_REWARD_DISTRIBUTION_NOT_OPENED);
+        require(
+            isDistributionOpen,
+            ERROR_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED
+        );
 
         uint64 lastBlockDistributedReward = 0;
-        if (previousRewardDistributionBlockNumber[_beneficiary] != 0) {
-            lastBlockDistributedReward = previousRewardDistributionBlockNumber[_beneficiary];
+        if (previousRewardsDistributionBlockNumber[_beneficiary] != 0) {
+            lastBlockDistributedReward = previousRewardsDistributionBlockNumber[_beneficiary];
         } else {
             lastBlockDistributedReward = deployBlock;
         }
@@ -383,7 +389,7 @@ contract VotingRewards is AragonApp {
         );
 
         uint64 currentBlockNumber = getBlockNumber64();
-        previousRewardDistributionBlockNumber[_beneficiary] = currentBlockNumber;
+        previousRewardsDistributionBlockNumber[_beneficiary] = currentBlockNumber;
 
         addressRewards[_beneficiary].push(
             Reward(
@@ -394,7 +400,7 @@ contract VotingRewards is AragonApp {
             )
         );
 
-        baseVault.transfer(rewardToken, rewardsVault, rewardAmount);
+        baseVault.transfer(rewardsToken, rewardsVault, rewardAmount);
         emit RewardDistributed(_beneficiary, rewardAmount, lockTime);
     }
 
@@ -418,7 +424,7 @@ contract VotingRewards is AragonApp {
             ) {
                 rewards[i].state = RewardState.Withdrawn;
                 rewardsVault.transfer(
-                    rewardToken,
+                    rewardsToken,
                     _beneficiary,
                     rewards[i].amount
                 );
@@ -445,14 +451,10 @@ contract VotingRewards is AragonApp {
         uint64 _fromBlock,
         uint64 _toBlock,
         uint256 _missingVotesThreshold
-    ) internal view returns (uint256 balance) {
-        MiniMeToken votingToken = MiniMeToken(dandelionVoting.token());
-
+    ) internal view returns (uint256) {
         uint256 missingVotes = 0;
-        uint256 minimunBalance = votingToken.balanceOfAt(
-            _beneficiary,
-            getBlockNumber64()
-        );
+        uint256 minimunBalance = 0;
+        bool forceFirstAssignment = true;
 
         // voteId starts from 1 in DandelionVoting
         for (
@@ -476,22 +478,28 @@ contract VotingRewards is AragonApp {
 
                 require(
                     missingVotes <= _missingVotesThreshold,
-                    ERROR_TOO_MUCH_MISSING_VOTES
+                    ERROR_TOO_MANY_MISSING_VOTES
                 );
 
-                uint256 votingTokenBalanceAtVote = votingToken.balanceOfAt(
-                    _beneficiary,
-                    startBlock
-                );
+                uint256 votingTokenBalanceAtVote = MiniMeToken(
+                    dandelionVoting.token()
+                )
+                    .balanceOfAt(_beneficiary, startBlock);
+
+                if (forceFirstAssignment == true) {
+                    forceFirstAssignment = false;
+                    minimunBalance = votingTokenBalanceAtVote;
+                }
+
                 if (votingTokenBalanceAtVote < minimunBalance) {
                     minimunBalance = votingTokenBalanceAtVote;
                 }
             }
 
-            // avoid "out of epoch" cycles
+            // NOTE: avoid "out of epoch" cycles
             if (startBlock < _fromBlock) break;
         }
 
-        return minimunBalance.mul(percentageReward).div(PCT_BASE);
+        return (minimunBalance).mul(percentageRewards).div(PCT_BASE);
     }
 }
