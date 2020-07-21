@@ -257,7 +257,7 @@ contract VotingRewards is AragonApp {
 
     /**
      * @notice Change minimum number of missing votes allowed
-     * @param _lockTime number of seconds for wich tokens will be locked after distributing reward
+     * @param _lockTime number of seconds for which tokens will be locked after distributing reward
      */
     function changeLockTime(uint64 _lockTime)
         external
@@ -436,38 +436,39 @@ contract VotingRewards is AragonApp {
      *         end of an epoch (now) and the balance at the first
      *         vote in an epoch (in percentage) for each vote happened within the epoch
      * @param _beneficiary beneficiary
-     * @param _from block from wich starting looking for votes
-     * @param _to   block to wich stopping looking for votes
+     * @param _fromBlock block from wich starting looking for votes
+     * @param _toBlock   block to wich stopping looking for votes
      * @param _missingVotesThreshold number of vote to which is possible to don't vote
      */
     function _calculateReward(
         address _beneficiary,
-        uint64 _from,
-        uint64 _to,
+        uint64 _fromBlock,
+        uint64 _toBlock,
         uint256 _missingVotesThreshold
     ) internal view returns (uint256 balance) {
-        MiniMeToken token = MiniMeToken(dandelionVoting.token());
+        MiniMeToken votingToken = MiniMeToken(dandelionVoting.token());
 
         uint256 missingVotes = 0;
-        uint256 minimunBalance = token.balanceOfAt(
+        uint256 minimunBalance = votingToken.balanceOfAt(
             _beneficiary,
             getBlockNumber64()
         );
 
         // voteId starts from 1 in DandelionVoting
         for (
-            uint256 voteId = dandelionVoting.votesLength();
+            uint256 voteId = dandelionVoting.votesLength() + 1;
             voteId > 1;
             voteId--
         ) {
+            uint256 realVoteId = voteId.sub(1);
             uint64 startBlock;
             (, , startBlock, , , , , , , , ) = dandelionVoting.getVote(
-                voteId.sub(1)
+                realVoteId
             );
 
-            if (startBlock >= _from && startBlock <= _to) {
+            if (startBlock >= _fromBlock && startBlock <= _toBlock) {
                 DandelionVoting.VoterState state = dandelionVoting
-                    .getVoterState(voteId.sub(1), _beneficiary);
+                    .getVoterState(realVoteId, _beneficiary);
 
                 if (state == DandelionVoting.VoterState.Absent) {
                     missingVotes = missingVotes.add(1);
@@ -478,17 +479,17 @@ contract VotingRewards is AragonApp {
                     ERROR_TOO_MUCH_MISSING_VOTES
                 );
 
-                uint256 balanceAtVote = token.balanceOfAt(
+                uint256 votingTokenBalanceAtVote = votingToken.balanceOfAt(
                     _beneficiary,
                     startBlock
                 );
-                if (balanceAtVote < minimunBalance) {
-                    minimunBalance = balanceAtVote;
+                if (votingTokenBalanceAtVote < minimunBalance) {
+                    minimunBalance = votingTokenBalanceAtVote;
                 }
             }
 
             // avoid "out of epoch" cycles
-            if (startBlock < _from) break;
+            if (startBlock < _fromBlock) break;
         }
 
         return minimunBalance.mul(percentageReward).div(PCT_BASE);
