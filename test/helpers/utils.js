@@ -25,10 +25,13 @@ const distributeRewardsToMany = async (
     const from = chunk * _interval
     const to = chunk * _interval + _interval
 
-    await _votingReward.distributeRewardsToMany(_beneficiaries.slice(from, to), {
-      from: _appManager,
-      gas: 9500000,
-    })
+    await _votingReward.distributeRewardsToMany(
+      _beneficiaries.slice(from, to),
+      {
+        from: _appManager,
+        gas: 9500000,
+      }
+    )
   }
 
   await _votingReward.distributeRewardsToMany(

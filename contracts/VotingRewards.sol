@@ -94,17 +94,17 @@ contract VotingRewards is AragonApp {
     mapping(address => Reward[]) public addressRewards;
 
     event BaseVaultChanged(address baseVault);
-    event RewardVaultChanged(address rewardsVault);
+    event RewardsVaultChanged(address rewardsVault);
     event VotingChanged(address voting);
     event PercentageRewardChanged(uint256 percentageReward);
-    event RewardLocked(address beneficiary, uint256 amount, uint64 lockTime);
-    event RewardDistributed(address beneficiary, uint256 amount);
-    event EpochDurationChanged(uint64 epoch);
-    event MissingVoteThresholdChanged(uint256 amount);
-    event LockTimeChanged(uint64 amount);
-    event RewardDistributionEpochOpened(uint64 start, uint64 end);
-    event RewardDistributionEpochClosed(uint64 date);
-    event RewardTokenChanged(address addr);
+    event RewardDistributed(address beneficiary, uint256 amount, uint64 lockTime);
+    event RewardCollected(address beneficiary, uint256 amount);
+    event EpochDurationChanged(uint64 epochDuration);
+    event MissingVoteThresholdChanged(uint256 missingVotesThreshold);
+    event LockTimeChanged(uint64 lockTime);
+    event RewardDistributionEpochOpened(uint64 startBlock, uint64 endBlock);
+    event RewardDistributionEpochClosed(uint64 rewardDistributionBlock);
+    event RewardTokenChanged(address rewardToken);
 
     /**
      * @notice Initialize VotingRewards app contract
@@ -247,16 +247,15 @@ contract VotingRewards is AragonApp {
 
     /**
      * @notice Change minimum number of missing votes allowed
-     * @param _lockTime number of seconds for wich tokens will be locked after collecting reward
+     * @param _lockTime number of seconds for wich tokens will be locked after distributing reward
      */
     function changeLockTime(uint64 _lockTime)
         external
         auth(CHANGE_LOCK_TIME_ROLE)
     {
-        require(_lockTime >= 0, ERROR_WRONG_VALUE);
         lockTime = _lockTime;
 
-        emit MissingVoteThresholdChanged(_lockTime);
+        emit LockTimeChanged(_lockTime);
     }
 
     /**
@@ -277,14 +276,14 @@ contract VotingRewards is AragonApp {
      * @notice Change Reward Vault
      * @param _rewardsVault new reward vault address
      */
-    function changeRewardVault(address _rewardsVault)
+    function changeRewardsVault(address _rewardsVault)
         external
         auth(CHANGE_VAULT_ROLE)
     {
         require(isContract(_rewardsVault), ERROR_ADDRESS_NOT_CONTRACT);
         rewardsVault = Vault(_rewardsVault);
 
-        emit RewardVaultChanged(_rewardsVault);
+        emit RewardsVaultChanged(_rewardsVault);
     }
 
     /**
@@ -376,7 +375,7 @@ contract VotingRewards is AragonApp {
         );
 
         baseVault.transfer(rewardToken, rewardsVault, reward);
-        emit RewardLocked(_beneficiary, reward, lockTime);
+        emit RewardDistributed(_beneficiary, reward, lockTime);
     }
 
     /**
@@ -400,7 +399,7 @@ contract VotingRewards is AragonApp {
                 rewards[i].state = RewardState.Withdrawn;
                 collectedRewards = collectedRewards.add(1);
 
-                emit RewardDistributed(_beneficiary, rewards[i].amount);
+                emit RewardCollected(_beneficiary, rewards[i].amount);
             }
         }
 
