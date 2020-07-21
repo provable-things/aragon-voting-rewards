@@ -229,7 +229,7 @@ contract VotingRewards is AragonApp {
 
     /**
      * @notice Change minimum number of seconds to claim dandelionVoting rewards
-     * @param _epochDuration number of seconds minimun to claim access to dandelionVoting rewards
+     * @param _epochDuration number of seconds minimum to claim access to dandelionVoting rewards
      */
     function changeEpochDuration(uint64 _epochDuration)
         external
@@ -243,7 +243,7 @@ contract VotingRewards is AragonApp {
 
     /**
      * @notice Change minimum number of missing votes allowed
-     * @param _missingVotesThreshold number of seconds minimun to claim access to dandelionVoting rewards
+     * @param _missingVotesThreshold number of seconds minimum to claim access to voting rewards
      */
     function changeMissingVotesThreshold(uint256 _missingVotesThreshold)
         external
@@ -408,15 +408,20 @@ contract VotingRewards is AragonApp {
         // prettier-ignore
         Reward[] storage rewards = addressRewards[_beneficiary];
 
+        require(rewards.length > 0, ERROR_NO_REWARDS);
+
         uint256 collectedRewards = 0;
         for (uint256 i = 0; i < rewards.length; i++) {
-            if (timestamp - rewards[i].lockBlock > rewards[i].lockTime) {
+            if (
+                timestamp - rewards[i].lockBlock > rewards[i].lockTime &&
+                rewards[i].state != RewardState.Withdrawn
+            ) {
+                rewards[i].state = RewardState.Withdrawn;
                 rewardsVault.transfer(
                     rewardToken,
                     _beneficiary,
                     rewards[i].amount
                 );
-                rewards[i].state = RewardState.Withdrawn;
                 collectedRewards = collectedRewards.add(1);
 
                 emit RewardCollected(_beneficiary, rewards[i].amount);
@@ -427,7 +432,7 @@ contract VotingRewards is AragonApp {
     }
 
     /**
-     * @notice Reward is calculated as the minimun balance between the
+     * @notice Reward is calculated as the minimum balance between the
      *         end of an epoch (now) and the balance at the first
      *         vote in an epoch (in percentage) for each vote happened within the epoch
      * @param _beneficiary beneficiary
