@@ -1,13 +1,14 @@
 import React, { Fragment } from 'react'
 import { useAppLogic } from './hooks'
 import { Button, Header, Main, SyncIndicator } from '@aragon/ui'
-import { useGuiStyle } from '@aragon/api-react'
+import { useGuiStyle, useAppState } from '@aragon/api-react'
 import { Row, Col } from 'react-bootstrap'
 import EpochDetails from './components/EpochDetails'
 import Rewards from './components/Rewards'
 
 const App = () => {
-  const { isSyncing, actions, account } = useAppLogic()
+  const { actions } = useAppLogic()
+  const { isSyncing, account} = useAppState()
 
   const { appearance } = useGuiStyle()
 
