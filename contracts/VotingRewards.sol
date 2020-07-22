@@ -137,7 +137,6 @@ contract VotingRewards is AragonApp {
         require(isContract(_rewardsToken), ERROR_ADDRESS_NOT_CONTRACT);
         require(_percentageRewards <= PCT_BASE, ERROR_PERCENTAGE_REWARD);
         require(_lockTime >= 0, ERROR_WRONG_VALUE);
-        require(_missingVotesThreshold >= 0, ERROR_WRONG_VALUE);
 
         baseVault = Vault(_baseVault);
         rewardsVault = Vault(_rewardsVault);
@@ -252,9 +251,7 @@ contract VotingRewards is AragonApp {
         external
         auth(CHANGE_MISSING_VOTES_THRESHOLD_ROLE)
     {
-        require(_missingVotesThreshold >= 0, ERROR_WRONG_VALUE);
         missingVotesThreshold = _missingVotesThreshold;
-
         emit MissingVoteThresholdChanged(_missingVotesThreshold);
     }
 
