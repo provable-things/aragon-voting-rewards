@@ -30,7 +30,7 @@ module.exports = {
     const MiniMeToken = artifacts.require('MiniMeToken')
     const MiniMeTokenFactory = artifacts.require('MiniMeTokenFactory')
     const ERC20 = artifacts.require('StandardToken')
-    
+
     const miniMeTokenFactory = await MiniMeTokenFactory.new()
     miniMeToken = await MiniMeToken.new(
       miniMeTokenFactory.address,

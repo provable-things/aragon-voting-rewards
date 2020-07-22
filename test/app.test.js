@@ -364,17 +364,23 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         EPOCH_BLOCKS + ONE_DAY_BLOCKS
       )
 
-      receipt = await votingReward.changeBaseVaultContractAddress(rewardsVault.address, {
-        from: appManager,
-      })
+      receipt = await votingReward.changeBaseVaultContractAddress(
+        rewardsVault.address,
+        {
+          from: appManager,
+        }
+      )
       assert.strictEqual(
         getEventArgument(receipt, 'BaseVaultChanged', 'baseVault'),
         rewardsVault.address
       )
 
-      receipt = await votingReward.changeRewardsVaultContractAddress(baseVault.address, {
-        from: appManager,
-      })
+      receipt = await votingReward.changeRewardsVaultContractAddress(
+        baseVault.address,
+        {
+          from: appManager,
+        }
+      )
       assert.strictEqual(
         getEventArgument(receipt, 'RewardsVaultChanged', 'rewardsVault'),
         baseVault.address
@@ -431,9 +437,12 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         '100000000000000000'
       )
 
-      receipt = await votingReward.changeRewardsTokenContractAddress(voting.address, {
-        from: appManager,
-      })
+      receipt = await votingReward.changeRewardsTokenContractAddress(
+        voting.address,
+        {
+          from: appManager,
+        }
+      )
       assert.strictEqual(
         getEventArgument(receipt, 'RewardsTokenChanged', 'rewardsToken'),
         voting.address
@@ -712,8 +721,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
 
           // accounts[0] does not vote
           for (let i = 0; i < accounts.length; i++) {
-            if (i !== 0)
-              await vote(voting, voteId, accounts[i])
+            if (i !== 0) await vote(voting, voteId, accounts[i])
           }
         }
 
@@ -1045,7 +1053,11 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         await distributeRewardsToMany(votingReward, accounts, appManager)
 
         await assertRevert(
-          openRewardsDistributionForEpoch(votingReward, startBlockNumberOfCurrentEpoch, appManager),
+          openRewardsDistributionForEpoch(
+            votingReward,
+            startBlockNumberOfCurrentEpoch,
+            appManager
+          ),
           'VOTING_REWARD_EPOCH_REWARDS_DISTRIBUTION_ALREADY_OPENED'
         )
       }).timeout(50000)
@@ -1090,7 +1102,11 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         )
         await closeRewardsDistributionForCurrentEpoch(votingReward, appManager)
         await assertRevert(
-          openRewardsDistributionForEpoch(votingReward, await now(), appManager),
+          openRewardsDistributionForEpoch(
+            votingReward,
+            await now(),
+            appManager
+          ),
           'VOTING_REWARD_ERROR_EPOCH'
         )
       }).timeout(20000)
@@ -1106,7 +1122,10 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
             appManager
           )
           // distributing reward...
-          await closeRewardsDistributionForCurrentEpoch(votingReward, appManager)
+          await closeRewardsDistributionForCurrentEpoch(
+            votingReward,
+            appManager
+          )
 
           const currentEpoch = (await votingReward.currentEpoch()).toString()
           assert.strictEqual(parseInt(currentEpoch), epoch + 1)
