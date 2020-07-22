@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { useAragonApi, useAppState } from '@aragon/api-react'
+import { useAragonApi } from '@aragon/api-react'
 
 const useCollectRewardAction = () => {
   const { api } = useAragonApi()
@@ -17,39 +17,12 @@ const useCollectRewardAction = () => {
 }
 
 const useAppLogic = () => {
-  const {
-    account,
-    settings,
-    dandelionVoting,
-    baseVault,
-    rewardsVault,
-    rewardsToken,
-    votingToken,
-    isSyncing,
-    epoch,
-    percentageRewards,
-    votes,
-    rewards,
-  } = useAppState()
-
   const actions = {
     collect: useCollectRewardAction(),
   }
 
   return {
     actions,
-    isSyncing,
-    account,
-    settings,
-    dandelionVoting,
-    baseVault,
-    rewardsVault,
-    rewardsToken,
-    epoch,
-    percentageRewards,
-    votes,
-    rewards,
-    votingToken,
   }
 }
 
