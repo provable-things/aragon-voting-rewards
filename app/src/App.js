@@ -7,15 +7,7 @@ import EpochDetails from './components/EpochDetails'
 import Rewards from './components/Rewards'
 
 const App = () => {
-  const {
-    isSyncing,
-    actions,
-    votes,
-    rewards,
-    rewardToken,
-    epoch,
-    account,
-  } = useAppLogic()
+  const { isSyncing, actions, rewards, rewardsToken, account } = useAppLogic()
 
   const { appearance } = useGuiStyle()
 
@@ -43,16 +35,10 @@ const App = () => {
           />
           <Row>
             <Col xs={12} xl={8}>
-              <EpochDetails
-                rewardToken={rewardToken}
-                votes={votes}
-                rewards={rewards}
-                epoch={epoch}
-                account={account}
-              />
+              <EpochDetails />
             </Col>
             <Col xs={12} xl={4} className="mt-3 mt-xl-0">
-              <Rewards rewardToken={rewardToken} rewards={rewards} />
+              <Rewards />
             </Col>
           </Row>
         </Fragment>

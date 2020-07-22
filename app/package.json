@@ -1,5 +1,5 @@
 {
-  "name": "aragon-voting-rewards",
+  "name": "voting-rewards",
   "version": "1.0.0",
   "main": "src/index.js",
   "dependencies": {

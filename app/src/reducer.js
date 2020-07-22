@@ -8,10 +8,10 @@ const reducer = (_state) => {
     return {
       account: null,
       settings: null,
-      voting: null,
+      dandelionVoting: null,
       baseVault: null,
       rewardsVault: null,
-      rewardToken: null,
+      rewardsToken: null,
       votingToken: null,
       epoch: null,
       rewards: [],
@@ -19,10 +19,14 @@ const reducer = (_state) => {
     }
   }
 
-  const { votes, epoch, rewards, rewardToken, votingToken } = _state
+  const { votes, epoch, rewards, rewardsToken, votingToken, settings } = _state
 
   return {
     ..._state,
+    settings: {
+      ...settings,
+      pctBase: settings.pctBase ? parseInt(settings.pctBase) : null,
+    },
     epoch: epoch
       ? {
           ...epoch,
@@ -35,7 +39,8 @@ const reducer = (_state) => {
           lockTime: epoch.lockTime
             ? parseInt(epoch.lockTime) * BLOCK_TIME
             : null,
-          percentageReward: parseInt(epoch.percentageReward) / Math.pow(10, 16),
+          percentageRewards:
+            parseInt(epoch.percentageRewards) / settings.pctBase,
           missingVotesThreshold: parseInt(epoch.missingVotesThreshold),
         }
       : null,
@@ -49,11 +54,11 @@ const reducer = (_state) => {
             snapshotBlock: parseInt(_vote.snapshotBlock),
             startDate: parseInt(_vote.startDate),
             minAcceptQuorum: parseInt(_vote.minAcceptQuorum, 10) / 18,
-            nay: offChainFormat(toBN(_vote.nay), rewardToken.decimals),
-            yea: offChainFormat(toBN(_vote.yea), rewardToken.decimals),
+            nay: offChainFormat(toBN(_vote.nay), rewardsToken.decimals),
+            yea: offChainFormat(toBN(_vote.yea), rewardsToken.decimals),
             votingPower: offChainFormat(
               toBN(_vote.votingPower),
-              rewardToken.decimals
+              rewardsToken.decimals
             ),
             supportRequired: parseInt(_vote.supportRequired, 10) / 18,
             state: parseInt(_vote.state),
@@ -65,7 +70,7 @@ const reducer = (_state) => {
       ? rewards.map((_reward) => {
           return {
             ..._reward,
-            amount: offChainFormat(toBN(_reward.amount), rewardToken.decimals),
+            amount: offChainFormat(toBN(_reward.amount), rewardsToken.decimals),
             // lockTime is expressed in blocks
             lockTime: parseInt(lockTime * BLOCK_TIME),
           }

@@ -22,7 +22,7 @@ const findMinimunBalanceInVotesForEpoch = (_votes, _from, _to) => {
   return !min ? 0 : min.toNumber()
 }
 
-const getElegibilityOnEpoch = (_votes, _from, _to, _missingVotesThreeshold) => {
+const getElegibilityOnEpoch = (_votes, _from, _to, _missingVotesThreshold) => {
   if (_votes.length === 0)
     return { elegible: false, missing: 0, votesInEpoch: [] }
 
@@ -42,7 +42,8 @@ const getElegibilityOnEpoch = (_votes, _from, _to, _missingVotesThreeshold) => {
   })
 
   return {
-    eligible: votedAt >= _votes.length - _missingVotesThreeshold ? true : false,
+    isEligible:
+      votedAt >= _votes.length - _missingVotesThreshold ? true : false,
     missingVotes: _votes.length - votedAt,
     votesInEpoch,
   }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, Fragment } from 'react'
+import { useAppState } from '@aragon/api-react'
 import {
   Box,
   ProgressBar,
@@ -10,97 +11,26 @@ import {
   Tag,
 } from '@aragon/ui'
 import styled from 'styled-components'
-import PropTypes from 'prop-types'
-import { parseSeconds } from '../utils/time-utils'
-import {
-  findMinimunBalanceInVotesForEpoch,
-  getElegibilityOnEpoch,
-} from '../utils/rewards-utils'
-import { strip } from '../utils/amount-utils'
+import { useEpochDetails } from '../hooks/epoch-details'
 
 const EpochDetails = (_props) => {
-  const { rewardToken, votes, rewards, epoch, account } = _props
+  const { rewardsToken, account } = useAppState()
 
   const theme = useTheme()
 
-  const [epochRemainder, setEpochRemainder] = useState('-')
-  const [epochTermination, setEpochTermination] = useState('-')
-  const [current, setCurrent] = useState('-')
-  const [duration, setDuration] = useState('-')
-  const [lockTime, setLockTime] = useState('-')
-  const [partecipateWith, setPartecipateWith] = useState('-')
-  const [reward, setReward] = useState('-')
-  const [percentageReward, setPercentageReward] = useState('-')
-  const [status, setStatus] = useState('-')
-  const [eligibility, setEligibility] = useState('-')
-  //const [missingVotes, setMissingVotes] = useState('-')
-  const [votesInEpoch, setvotesInEpoch] = useState([])
-
-  useEffect(() => {
-    if (!epoch) return
-
-    epoch.current || epoch.current === 0
-      ? setCurrent(epoch.current)
-      : setCurrent('-')
-    epoch.lockTime || epoch.lockTime === 0
-      ? setLockTime(parseSeconds(epoch.lockTime))
-      : setLockTime('-')
-
-    epoch.duration || epoch.duration === 0
-      ? setDuration(parseSeconds(epoch.duration))
-      : setDuration('-')
-
-    epoch.percentageReward || epoch.percentageReward === 0
-      ? setPercentageReward(`${epoch.percentageReward * 100}%`)
-      : setPercentageReward('-')
-
-    if (epoch.startBlock && epoch.duration) {
-      setEpochTermination(
-        new Date((epoch.startDate + epoch.duration) * 1000).toLocaleString()
-      )
-    }
-
-    if (epoch.duration && epoch.startDate) {
-      const start = epoch.startDate * 1000
-      const end = (epoch.startDate + epoch.duration) * 1000
-      const now = new Date().getTime()
-
-      setEpochRemainder((end - now) / 1000)
-
-      if (now > end) setStatus(1)
-
-      setStatus(Math.round(((now - start) / (end - start)) * 100) / 100)
-    }
-  }, [epoch])
-
-  useEffect(() => {
-    if (!epoch) return
-
-    const minimun = findMinimunBalanceInVotesForEpoch(
-      votes,
-      epoch.startBlock,
-      epoch.startBlock + epoch.durationBlock
-    )
-    if (!minimun) return
-
-    setPartecipateWith(strip(minimun.toString()))
-    setReward(strip(parseInt(minimun.toString()) * epoch.percentageReward))
-  }, [votes])
-
-  useEffect(() => {
-    if (!epoch) return
-
-    const { eligible, /*missingVotes,*/ votesInEpoch } = getElegibilityOnEpoch(
-      votes,
-      epoch.startBlock,
-      epoch.startBlock + epoch.durationBlock,
-      epoch.missingVotesThreshold
-    )
-
-    setEligibility(eligible)
-    //setMissingVotes(missingVotes)
-    setvotesInEpoch(votesInEpoch)
-  }, [votes])
+  const [details] = useEpochDetails()
+  const {
+    current,
+    lockTime,
+    duration,
+    percentageRewards,
+    epochTermination,
+    epochRemainder,
+    status,
+    reward,
+    partecipateWith,
+    votesInEpoch,
+  } = details
 
   return (
     <Box
@@ -130,13 +60,13 @@ const EpochDetails = (_props) => {
               color: ${theme.info};
             `}
           >
-            {rewardToken ? ` ${rewardToken.symbol}` : '-'}
+            {rewardsToken ? ` ${rewardsToken.symbol}` : '-'}
           </TokenSymbol>
         </DetailValue>
       </Detail>
       <Detail>
         <DetailText>Percentage reward:</DetailText>
-        <DetailValue>{percentageReward}</DetailValue>
+        <DetailValue>{percentageRewards}</DetailValue>
       </Detail>
       <Detail>
         <DetailText>Estimated reward:</DetailText>
@@ -147,7 +77,7 @@ const EpochDetails = (_props) => {
               color: ${theme.info};
             `}
           >
-            {rewardToken ? ` ${rewardToken.symbol}` : '-'}
+            {rewardsToken ? ` ${rewardsToken.symbol}` : '-'}
           </TokenSymbol>
         </DetailValue>
       </Detail>
@@ -157,11 +87,7 @@ const EpochDetails = (_props) => {
       </Detail>
       <Detail css={``}>
         <DetailText>Ends in:</DetailText>
-        <DetailValue>
-          {epochRemainder && epochRemainder > 0
-            ? parseSeconds(epochRemainder)
-            : 'Terminated'}
-        </DetailValue>
+        <DetailValue>{epochRemainder}</DetailValue>
       </Detail>
       <ProgressBar value={status} />
       {account ? (
@@ -173,61 +99,64 @@ const EpochDetails = (_props) => {
           >
             <DetailText>Your participation to this epoch:</DetailText>
             <DetailValue>
-              {votesInEpoch.map(({ state, id }, _index) => {
-                return (
-                  <Fragment key={_index}>
-                    {state ? (
-                      <Tag
-                        mode="new"
-                        css={`
-                          margin-left: ${GU}px;
-                        `}
-                      >
-                        <IconCheck
-                          size="small"
+              <Fragment>
+                {votesInEpoch.length === 0 ? <Tag>No Votes</Tag> : null}
+                {votesInEpoch.map(({ state, id }, _index) => {
+                  return (
+                    <Fragment key={_index}>
+                      {state ? (
+                        <Tag
+                          mode="new"
                           css={`
-                            color: green;
-                            vertical-align: text-top;
+                            margin-left: ${GU}px;
                           `}
-                        />
-                        {`Vote #${id}`}
-                      </Tag>
-                    ) : !state && epochRemainder > 0 ? (
-                      <Tag
-                        mode="indicator"
-                        css={`
-                          margin-left: ${GU}px;
-                        `}
-                      >
-                        <IconClock
-                          size="small"
+                        >
+                          <IconCheck
+                            size="small"
+                            css={`
+                              color: green;
+                              vertical-align: text-top;
+                            `}
+                          />
+                          {`Vote #${id}`}
+                        </Tag>
+                      ) : !state && epochRemainder > 0 ? (
+                        <Tag
+                          mode="indicator"
                           css={`
-                            vertical-align: text-top;
+                            margin-left: ${GU}px;
                           `}
-                        />
-                        {`Vote ${id}`}
-                      </Tag>
-                    ) : (
-                      <Tag
-                        color="red"
-                        css={`
-                          margin-left: ${GU}px;
-                          background: rgba(255, 102, 102, 0.35);
-                        `}
-                      >
-                        <IconClose
-                          size="small"
+                        >
+                          <IconClock
+                            size="small"
+                            css={`
+                              vertical-align: text-top;
+                            `}
+                          />
+                          {`Vote ${id}`}
+                        </Tag>
+                      ) : (
+                        <Tag
+                          color="red"
                           css={`
-                            color: red;
-                            vertical-align: text-top;
+                            margin-left: ${GU}px;
+                            background: rgba(255, 102, 102, 0.35);
                           `}
-                        />
-                        {`Vote #${id}`}
-                      </Tag>
-                    )}
-                  </Fragment>
-                )
-              })}
+                        >
+                          <IconClose
+                            size="small"
+                            css={`
+                              color: red;
+                              vertical-align: text-top;
+                            `}
+                          />
+                          {`Vote #${id}`}
+                        </Tag>
+                      )}
+                    </Fragment>
+                  )
+                })}
+              </Fragment>
             </DetailValue>
           </Detail>
         </Fragment>
@@ -255,13 +184,5 @@ const Detail = styled.div`
   display: flex;
   justify-content: space-between;
 `
-
-EpochDetails.propTypes = {
-  rewardToken: PropTypes.object,
-  rewards: PropTypes.array,
-  votes: PropTypes.array,
-  epoch: PropTypes.object,
-  account: PropTypes.string,
-}
 
 export default EpochDetails

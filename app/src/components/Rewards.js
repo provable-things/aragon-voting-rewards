@@ -1,17 +1,17 @@
 import React from 'react'
 import { Table, TableHeader, TableRow, TableCell, Text, Tag } from '@aragon/ui'
+import { useAppState } from '@aragon/api-react'
 import NoRewards from './NoRewards'
-import PropTypes from 'prop-types'
 import { strip } from '../utils/amount-utils'
 import { UNLOCKED, WITHDRAWN } from '../utils/rewards-utils'
 import { parseSeconds } from '../utils/time-utils'
 
 const Rewards = (_props) => {
-  const { rewards, rewardToken } = _props
+  const { rewardsToken, rewards } = useAppState()
 
   const now = new Date().getTime() / 1000
 
-  return rewards && rewards.length > 0 && rewardToken ? (
+  return rewards && rewards.length > 0 && rewardsToken ? (
     <Table
       header={
         <TableRow>
@@ -24,7 +24,7 @@ const Rewards = (_props) => {
           <TableRow key={_index}>
             <TableCell>
               <Text>{`${strip(amount.toString())} ${
-                rewardToken.symbol
+                rewardsToken.symbol
               }`}</Text>
             </TableCell>
             <TableCell>
@@ -50,11 +50,6 @@ const Rewards = (_props) => {
   ) : (
     <NoRewards />
   )
-}
-
-Rewards.propTypes = {
-  rewards: PropTypes.array,
-  rewardToken: PropTypes.object,
 }
 
 export default Rewards

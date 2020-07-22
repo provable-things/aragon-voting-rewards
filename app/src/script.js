@@ -56,12 +56,12 @@ async function preInitizialize(_baseVaultAddress) {
     network: await app.network().pipe(first()).toPromise(),
   }
   const rewardsVaultAddress = await app.call('rewardsVault').toPromise()
-  const votingAddress = await app.call('voting').toPromise()
+  const dandelionVotingAddress = await app.call('dandelionVoting').toPromise()
 
   return initialize({
     baseVaultAddress: _baseVaultAddress,
     rewardsVaultAddress,
-    votingAddress,
+    dandelionVotingAddress,
     settings,
   })
 }
@@ -99,19 +99,28 @@ async function initialize(_initParams) {
 function initializeState(_initParams) {
   return async (_cachedState) => {
     try {
-      const rewardsTokenAddress = await app.call('rewardToken').toPromise()
-      const rewardToken = await getTokenData(rewardsTokenAddress)
+      const { settings } = _initParams
+      const rewardsTokenAddress = await app.call('rewardsToken').toPromise()
+      const rewardsToken = await getTokenData(rewardsTokenAddress)
 
-      const votingContract = app.external(_initParams.votingAddress, VotingAbi)
+      const votingContract = app.external(
+        _initParams.dandelionVotingAddress,
+        VotingAbi
+      )
       const votingTokenAddress = await votingContract.token().toPromise()
       const votingToken = await getTokenData(votingTokenAddress)
 
       const epoch = await getEpochData()
+      const pctBase = await app.call('PCT_BASE').toPromise()
 
       return {
         ..._initParams,
         ..._cachedState,
-        rewardToken,
+        settings: {
+          ...settings,
+          pctBase,
+        },
+        rewardsToken,
         votingToken,
         epoch,
       }
@@ -127,6 +136,7 @@ const handleEvent = async (_nextState) => {
     if (_nextState.account) {
       return {
         ..._nextState,
+        rewards: await getRewardsInfo(account),
       }
     }
 
@@ -144,11 +154,11 @@ const handleAccountChange = async (_nextState, { account }) => {
         ..._nextState,
         account,
         votes: await getVotes(
-          _nextState.votingAddress,
+          _nextState.dandelionVotingAddress,
           _nextState.votingToken.address,
           account
         ),
-        rewards: await getRewards(account),
+        rewards: await getRewardsInfo(account),
       }
     }
 
@@ -182,17 +192,17 @@ const getTokenData = async (_tokenAddress) => {
 const getEpochData = async () => {
   try {
     // a new epoch starts when the rewards of the last epoch ends
-    const lastRewardDistributionBlock = await app
-      .call('lastRewardDistributionBlock')
+    const lastRewardsDistributionBlock = await app
+      .call('lastRewardsDistributionBlock')
       .toPromise()
 
     return {
-      startBlock: lastRewardDistributionBlock,
-      startDate: await getBlockTimestamp(lastRewardDistributionBlock),
+      startBlock: lastRewardsDistributionBlock,
+      startDate: await getBlockTimestamp(lastRewardsDistributionBlock),
       duration: await app.call('epochDuration').toPromise(),
       current: await app.call('currentEpoch').toPromise(),
       lockTime: await app.call('lockTime').toPromise(),
-      percentageReward: await app.call('percentageReward').toPromise(),
+      percentageRewards: await app.call('percentageRewards').toPromise(),
       missingVotesThreshold: await app
         .call('missingVotesThreshold')
         .toPromise(),
@@ -208,9 +218,9 @@ const getEpochData = async () => {
   }
 }
 
-const getRewards = async (_receiver) => {
+const getRewardsInfo = async (_receiver) => {
   try {
-    const rewards = await app.call('getRewards', _receiver).toPromise()
+    const rewards = await app.call('getRewardsInfo', _receiver).toPromise()
     return rewards.map(async (_reward) => {
       return {
         ..._reward,
