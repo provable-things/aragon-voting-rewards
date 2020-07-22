@@ -70,22 +70,20 @@ const useEpochDetails = () => {
       votesInEpoch = eligibility.votesInEpoch
     }
 
-    return [
-      {
-        current,
-        lockTime,
-        duration,
-        percentageRewards,
-        epochTermination,
-        epochRemainder: epochRemainder ? epochRemainder : 0,
-        status,
-        minimum,
-        reward: reward ? reward : '-',
-        partecipateWith: partecipateWith ? partecipateWith : '-',
-        isEligible,
-        votesInEpoch: votesInEpoch ? votesInEpoch : [],
-      },
-    ]
+    return {
+      current,
+      lockTime,
+      duration,
+      percentageRewards,
+      epochTermination,
+      epochRemainder: epochRemainder ? epochRemainder : 0,
+      status,
+      minimum,
+      reward: reward ? reward : '-',
+      partecipateWith: partecipateWith ? partecipateWith : '-',
+      isEligible,
+      votesInEpoch: votesInEpoch ? votesInEpoch : [],
+    }
   }, [epoch, votes])
 }
 

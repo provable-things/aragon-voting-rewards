@@ -18,7 +18,6 @@ const EpochDetails = (_props) => {
 
   const theme = useTheme()
 
-  const [details] = useEpochDetails()
   const {
     current,
     lockTime,
@@ -30,7 +29,7 @@ const EpochDetails = (_props) => {
     reward,
     partecipateWith,
     votesInEpoch,
-  } = details
+  } = useEpochDetails()
 
   return (
     <Box
