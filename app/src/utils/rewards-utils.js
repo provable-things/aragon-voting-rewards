@@ -24,7 +24,7 @@ const findMinimunBalanceInVotesForEpoch = (_votes, _from, _to) => {
 
 const getElegibilityOnEpoch = (_votes, _from, _to, _missingVotesThreshold) => {
   if (_votes.length === 0)
-    return { elegible: false, missing: 0, votesInEpoch: [] }
+    return { isElegible: false, missing: 0, votesInEpoch: [] }
 
   let votedAt = 0
   const votesInEpoch = []
@@ -42,7 +42,7 @@ const getElegibilityOnEpoch = (_votes, _from, _to, _missingVotesThreshold) => {
   })
 
   return {
-    isEligible:
+    isElegible:
       votedAt >= _votes.length - _missingVotesThreshold ? true : false,
     missingVotes: _votes.length - votedAt,
     votesInEpoch,

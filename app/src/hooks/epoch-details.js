@@ -47,7 +47,7 @@ const useEpochDetails = () => {
     }
 
     let minimum = '-'
-    let reward, partecipateWith, isEligible, votesInEpoch
+    let reward, partecipateWith, isElegible, votesInEpoch
     if (epoch) {
       const minimum = findMinimunBalanceInVotesForEpoch(
         votes,
@@ -66,7 +66,7 @@ const useEpochDetails = () => {
         epoch.startBlock + epoch.durationBlock,
         epoch.missingVotesThreshold
       )
-      isEligible = eligibility.isEligible
+      isElegible = eligibility.isElegible
       votesInEpoch = eligibility.votesInEpoch
     }
 
@@ -81,7 +81,7 @@ const useEpochDetails = () => {
       minimum,
       reward: reward ? reward : '-',
       partecipateWith: partecipateWith ? partecipateWith : '-',
-      isEligible,
+      isElegible,
       votesInEpoch: votesInEpoch ? votesInEpoch : [],
     }
   }, [epoch, votes])

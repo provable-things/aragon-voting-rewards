@@ -8,7 +8,7 @@ import Rewards from './components/Rewards'
 
 const App = () => {
   const { actions } = useAppLogic()
-  const { isSyncing, account} = useAppState()
+  const { isSyncing, account } = useAppState()
 
   const { appearance } = useGuiStyle()
 
