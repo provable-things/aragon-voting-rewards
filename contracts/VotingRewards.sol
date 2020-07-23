@@ -406,9 +406,8 @@ contract VotingRewards is AragonApp {
      * @param _beneficiary address that should be fund with rewards
      * @dev rewardsVault should have TRANSFER_ROLE permission
      */
-    function collectRewardsFor(address _beneficiary) public {
-        uint64 timestamp = getBlockNumber64();
-        // prettier-ignore
+    function collectRewardsFor(address _beneficiary) public returns(bool){
+        uint64 currentBlockNumber = getBlockNumber64();
         Reward[] storage rewards = addressRewards[_beneficiary];
 
         require(rewards.length > 0, ERROR_NO_REWARDS);
@@ -416,7 +415,8 @@ contract VotingRewards is AragonApp {
         uint256 collectedRewards = 0;
         for (uint256 i = 0; i < rewards.length; i++) {
             if (
-                timestamp - rewards[i].lockBlock > rewards[i].lockTime &&
+                currentBlockNumber - rewards[i].lockBlock >
+                rewards[i].lockTime &&
                 rewards[i].state != RewardState.Withdrawn
             ) {
                 rewards[i].state = RewardState.Withdrawn;
@@ -432,6 +432,7 @@ contract VotingRewards is AragonApp {
         }
 
         require(collectedRewards >= 1, ERROR_NO_REWARDS);
+        return true;
     }
 
     /**
@@ -450,24 +451,17 @@ contract VotingRewards is AragonApp {
         uint256 _missingVotesThreshold
     ) internal view returns (uint256) {
         uint256 missingVotes = 0;
-        uint256 minimunBalance = 0;
-        bool forceFirstAssignment = true;
-
+        uint256 minimumBalance = 0;
+        uint256 votesLength = dandelionVoting.votesLength();
+        bool isFirstVoteInAnEpoch = true;
         // voteId starts from 1 in DandelionVoting
-        for (
-            uint256 voteId = dandelionVoting.votesLength() + 1;
-            voteId > 1;
-            voteId--
-        ) {
-            uint256 realVoteId = voteId.sub(1);
+        for (uint256 voteId = votesLength; voteId >= 1; voteId--) {
             uint64 startBlock;
-            (, , startBlock, , , , , , , , ) = dandelionVoting.getVote(
-                realVoteId
-            );
+            (, , startBlock, , , , , , , , ) = dandelionVoting.getVote(voteId);
 
             if (startBlock >= _fromBlock && startBlock <= _toBlock) {
                 DandelionVoting.VoterState state = dandelionVoting
-                    .getVoterState(realVoteId, _beneficiary);
+                    .getVoterState(voteId, _beneficiary);
 
                 if (state == DandelionVoting.VoterState.Absent) {
                     missingVotes = missingVotes.add(1);
@@ -483,20 +477,22 @@ contract VotingRewards is AragonApp {
                 )
                     .balanceOfAt(_beneficiary, startBlock);
 
-                if (forceFirstAssignment == true) {
-                    forceFirstAssignment = false;
-                    minimunBalance = votingTokenBalanceAtVote;
+                if (isFirstVoteInAnEpoch) {
+                    isFirstVoteInAnEpoch = false;
+                    minimumBalance = votingTokenBalanceAtVote;
                 }
 
-                if (votingTokenBalanceAtVote < minimunBalance) {
-                    minimunBalance = votingTokenBalanceAtVote;
+                if (votingTokenBalanceAtVote < minimumBalance) {
+                    minimumBalance = votingTokenBalanceAtVote;
                 }
             }
 
-            // NOTE: avoid "out of epoch" cycles
             if (startBlock < _fromBlock) break;
         }
 
-        return (minimunBalance).mul(percentageRewards).div(PCT_BASE);
+        return
+            minimumBalance > 0
+                ? (minimumBalance).mul(percentageRewards).div(PCT_BASE)
+                : minimumBalance;
     }
 }

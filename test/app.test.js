@@ -13,6 +13,7 @@ const {
   getAccountsBalance,
   getTotalReward,
   distributeRewardsToMany,
+  distributeRewardsTo,
 } = require('./helpers/utils')
 
 const MiniMeToken = artifacts.require('MiniMeToken')
@@ -27,10 +28,10 @@ const { hash: nameHash } = require('eth-ens-namehash')
 const ETH_ADDRESS = '0x0000000000000000000000000000000000000000'
 const MOCK_TOKEN_BALANCE = '10000000000000000000000000'
 const MINIME_TOKEN_BALANCE = 100000
-const ONE_BLOCK = 15
+const ONE_BLOCK = 1
 const ONE_MINUTE_BLOCK = 4 // 60 / 15 where 15 is block time
 const ONE_DAY_BLOCKS = 5760 // 86400 / 15 where 15 is block time
-const EPOCH_BLOCKS = ONE_MINUTE_BLOCK * 5
+const EPOCH_BLOCKS = ONE_MINUTE_BLOCK * 20
 const PERCENTAGE_REWARD = '420000000000000000' // 42 * 100
 const LOCK_TIME_BLOCKS = ONE_MINUTE_BLOCK * 10
 const MISSING_VOTES_THRESHOLD = 1
@@ -38,8 +39,8 @@ const UNLOCKED = 0
 const WITHDRAWN = 1
 const SUPPORT_REQUIRED_PCT = '910000000000000000' // 91% (high to facilitate tests since the value is irrilevant
 const MIN_ACCEPTED_QUORUM_PCT = '910000000000000000' // 91% (high to facilitate tests since the value is irrilevant
-const DURATION_BLOCKS = ONE_DAY_BLOCKS * 5
-const BUFFER_BLOCKS = 5
+const DURATION_BLOCKS = ONE_MINUTE_BLOCK * 10
+const BUFFER_BLOCKS = 0
 
 contract('VotingRewards', ([appManager, ...accounts]) => {
   let miniMeToken,
@@ -738,6 +739,38 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         )
       })
 
+      it('Should be rewarded respect of the minimun balance in an epoch', async () => {
+        const numVotes = 10
+
+        const expectedReward = Math.round(
+          ((await miniMeToken.balanceOf(accounts[0])) * PERCENTAGE_REWARD) /
+            10 ** 18
+        )
+        const startBlockNumberOfCurrentEpoch = await now()
+        for (let voteId = 1; voteId <= numVotes; voteId++) {
+          await newVote(
+            voting,
+            executionTarget.address,
+            executionTarget.contract.methods.execute().encodeABI(),
+            appManager
+          )
+          await mineBlocks(ONE_BLOCK)
+          await vote(voting, voteId, accounts[0])
+          await miniMeToken.generateTokens(accounts[0], 100)
+        }
+
+        await mineBlocks(EPOCH_BLOCKS)
+        await openRewardsDistributionForEpoch(
+          votingReward,
+          startBlockNumberOfCurrentEpoch,
+          appManager
+        )
+        await distributeRewardsTo(votingReward, accounts[0], appManager)
+        const rewards = await votingReward.getRewardsInfo(accounts[0])
+        assert.strictEqual(rewards.length, 1)
+        assert.strictEqual(parseInt(rewards[0].amount), expectedReward)
+      })
+
       it('Should be able to collect, distribute rewards for who partecipated actively in voting and catching events', async () => {
         const numVotes = 10
         const startBlockNumberOfCurrentEpoch = await now()
@@ -759,10 +792,10 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
             appManager
           )
 
+          //await mineBlocks(ONE_BLOCK)
           for (let account of accounts) {
-            await vote(voting, voteId, account)
-            // in order (if works) to have the minimun equal to expectedReward since balance increase
             await miniMeToken.generateTokens(account, 10)
+            await vote(voting, voteId, account)
           }
         }
 

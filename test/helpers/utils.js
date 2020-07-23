@@ -129,4 +129,5 @@ module.exports = {
   getAccountsBalance,
   getTotalReward,
   distributeRewardsToMany,
+  distributeRewardsTo,
 }
