@@ -52,7 +52,7 @@ const reducer = (_state) => {
             open: _vote.open,
             script: _vote.script,
             snapshotBlock: parseInt(_vote.snapshotBlock),
-            startDate: parseInt(_vote.startDate),
+            startBlock: parseInt(_vote.startBlock),
             minAcceptQuorum: parseInt(_vote.minAcceptQuorum, 10) / 18,
             nay: offChainFormat(toBN(_vote.nay), rewardsToken.decimals),
             yea: offChainFormat(toBN(_vote.yea), rewardsToken.decimals),

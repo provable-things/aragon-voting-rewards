@@ -30,13 +30,13 @@ const useEpochDetails = () => {
 
     const epochTermination =
       epoch && epoch.startBlock && epoch.duration
-        ? new Date((epoch.startDate + epoch.duration) * 1000).toLocaleString()
+        ? new Date((epoch.startBlock + epoch.duration) * 1000).toLocaleString()
         : '-'
 
     let epochRemainder, status
-    if (epoch && epoch.duration && epoch.startDate) {
-      const start = epoch.startDate * 1000
-      const end = (epoch.startDate + epoch.duration) * 1000
+    if (epoch && epoch.duration && epoch.startBlock) {
+      const start = epoch.startBlock * 1000
+      const end = (epoch.startBlock + epoch.duration) * 1000
       const now = new Date().getTime()
 
       epochRemainder = (end - now) / 1000
