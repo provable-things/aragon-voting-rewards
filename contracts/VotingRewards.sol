@@ -406,7 +406,7 @@ contract VotingRewards is AragonApp {
      * @param _beneficiary address that should be fund with rewards
      * @dev rewardsVault should have TRANSFER_ROLE permission
      */
-    function collectRewardsFor(address _beneficiary) public returns(bool){
+    function collectRewardsFor(address _beneficiary) public returns (bool) {
         uint64 currentBlockNumber = getBlockNumber64();
         Reward[] storage rewards = addressRewards[_beneficiary];
 
@@ -453,38 +453,38 @@ contract VotingRewards is AragonApp {
         uint256 missingVotes = 0;
         uint256 minimumBalance = 0;
         uint256 votesLength = dandelionVoting.votesLength();
-        bool isFirstVoteInAnEpoch = true;
+        bool isFirstUserVoteInEpoch = true;
         // voteId starts from 1 in DandelionVoting
         for (uint256 voteId = votesLength; voteId >= 1; voteId--) {
             uint64 startBlock;
             (, , startBlock, , , , , , , , ) = dandelionVoting.getVote(voteId);
 
             if (startBlock >= _fromBlock && startBlock <= _toBlock) {
-                DandelionVoting.VoterState state = dandelionVoting
+                DandelionVoting.VoterState voterState = dandelionVoting
                     .getVoterState(voteId, _beneficiary);
 
-                if (state == DandelionVoting.VoterState.Absent) {
+                if (voterState == DandelionVoting.VoterState.Absent) {
                     missingVotes = missingVotes.add(1);
+                } else {
+                    uint256 votingTokenBalanceAtVote = MiniMeToken(
+                        dandelionVoting.token()
+                    )
+                        .balanceOfAt(_beneficiary, startBlock);
+
+                    if (isFirstUserVoteInEpoch) {
+                        isFirstUserVoteInEpoch = false;
+                        minimumBalance = votingTokenBalanceAtVote;
+                    }
+
+                    if (votingTokenBalanceAtVote < minimumBalance) {
+                        minimumBalance = votingTokenBalanceAtVote;
+                    }
                 }
 
                 require(
                     missingVotes <= _missingVotesThreshold,
                     ERROR_TOO_MANY_MISSING_VOTES
                 );
-
-                uint256 votingTokenBalanceAtVote = MiniMeToken(
-                    dandelionVoting.token()
-                )
-                    .balanceOfAt(_beneficiary, startBlock);
-
-                if (isFirstVoteInAnEpoch) {
-                    isFirstVoteInAnEpoch = false;
-                    minimumBalance = votingTokenBalanceAtVote;
-                }
-
-                if (votingTokenBalanceAtVote < minimumBalance) {
-                    minimumBalance = votingTokenBalanceAtVote;
-                }
             }
 
             if (startBlock < _fromBlock) break;

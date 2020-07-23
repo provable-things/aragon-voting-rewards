@@ -34,7 +34,7 @@ const ONE_DAY_BLOCKS = 5760 // 86400 / 15 where 15 is block time
 const EPOCH_BLOCKS = ONE_MINUTE_BLOCK * 20
 const PERCENTAGE_REWARD = '420000000000000000' // 42 * 100
 const LOCK_TIME_BLOCKS = ONE_MINUTE_BLOCK * 10
-const MISSING_VOTES_THRESHOLD = 1
+const MISSING_VOTES_THRESHOLD = 2
 const UNLOCKED = 0
 const WITHDRAWN = 1
 const SUPPORT_REQUIRED_PCT = '910000000000000000' // 91% (high to facilitate tests since the value is irrilevant
@@ -1207,6 +1207,30 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           }
         }
       }).timeout(50000)
+
+      it('Should not be rewarded if number of votes = missingVotes = missingVotesThreshold', async () => {
+        const startBlockNumberOfCurrentEpoch = await now()
+        for (let voteId = 1; voteId <= MISSING_VOTES_THRESHOLD; voteId++) {
+          await newVote(
+            voting,
+            executionTarget.address,
+            executionTarget.contract.methods.execute().encodeABI(),
+            appManager
+          )
+        }
+
+        await mineBlocks(EPOCH_BLOCKS)
+        await openRewardsDistributionForEpoch(
+          votingReward,
+          startBlockNumberOfCurrentEpoch,
+          appManager
+        )
+        // NOTE: fails on distribute a 0 reward
+        await assertRevert(
+          distributeRewardsTo(votingReward, accounts[0], appManager),
+          'VAULT_TRANSFER_VALUE_ZERO'
+        )
+      })
     })
   })
 })
