@@ -23,7 +23,7 @@ const App = () => {
       ) : (
         <Fragment>
           <Header
-            primary="Voting Reward"
+            primary="Voting Rewards"
             secondary={
               <React.Fragment>
                 <Button
