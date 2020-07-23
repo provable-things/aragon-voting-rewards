@@ -1,7 +1,7 @@
 {
-  "name": "Voting Reward",
+  "name": "Rewards",
   "author": "allemanfredi@provable-things <alle.manfredi@gmail.com>",
-  "description": "get rewards in base of how many votes you made in a certain amount of time.",
+  "description": "Get rewards in base of how many votes you made in a certain amount of time.",
   "details_url": "/meta/details.md",
   "source_url": "https://github.com/provable-things/aragon-voting-rewards",
   "icons": [

@@ -39,7 +39,7 @@ const EpochDetails = (_props) => {
       `}
     >
       <Detail>
-        <DetailText>Epoch:</DetailText>
+        <DetailText>Current epoch:</DetailText>
         <DetailValue>{current}</DetailValue>
       </Detail>
       <Detail>
@@ -51,7 +51,7 @@ const EpochDetails = (_props) => {
         <DetailValue>{epochTermination}</DetailValue>
       </Detail>
       <Detail>
-        <DetailText>Partecipate with:</DetailText>
+        <DetailText>Partecipating with:</DetailText>
         <DetailValue>
           {partecipateWith}
           <TokenSymbol
