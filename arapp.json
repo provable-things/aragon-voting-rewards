@@ -1,7 +1,7 @@
 {
   "roles": [
     {
-      "name": "Change minimum seconds nedeed to access to rewards",
+      "name": "Change epoch duration",
       "id": "CHANGE_EPOCH_DURATION_ROLE",
       "params": []
     },
