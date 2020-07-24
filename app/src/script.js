@@ -280,7 +280,6 @@ const getVote = async (
       _votingTokenAddress,
       MinimeTokenAbi
     )
-    // TODO: why startBlock and not startBlock?
     const balance = await votingTokenContract
       .balanceOfAt(_account, vote.startBlock)
       .toPromise()
