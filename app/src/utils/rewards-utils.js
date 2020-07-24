@@ -1,5 +1,3 @@
-import { toBN } from 'web3-utils'
-
 const UNLOCKED = 0
 const WITHDRAWN = 1
 const ABSENT = 0
@@ -8,7 +6,6 @@ const findMinimunBalanceInVotesForEpoch = (_votes, _from, _to) => {
   let min = null
 
   _votes.forEach((_vote, id) => {
-    // TODO understand why startBlock is startBlock
     if (_vote.startBlock >= _from && _vote.startBlock <= _to) {
       if (!min) min = _vote.balance
 
