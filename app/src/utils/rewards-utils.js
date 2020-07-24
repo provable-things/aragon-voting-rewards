@@ -29,7 +29,6 @@ const getElegibilityOnEpoch = (_votes, _from, _to, _missingVotesThreshold) => {
   let votedAt = 0
   const votesInEpoch = []
   _votes.forEach((_vote, id) => {
-    // TODO understand why startBlock is startBlock
     if (_vote.startBlock >= _from && _vote.startBlock <= _to) {
       if (_vote.state !== ABSENT) {
         votedAt += 1
