@@ -1,5 +1,6 @@
 import { toBN } from 'web3-utils'
 import { offChainFormat } from './utils/amount-utils'
+import { UNLOCKED, WITHDRAWN } from './utils/rewards-utils'
 
 const BLOCK_TIME = 15
 
@@ -19,7 +20,15 @@ const reducer = (_state) => {
     }
   }
 
-  const { votes, epoch, rewards, rewardsToken, votingToken, settings } = _state
+  const {
+    votes,
+    epoch,
+    unlockedRewards,
+    withdrawnRewards,
+    rewardsToken,
+    votingToken,
+    settings,
+  } = _state
 
   return {
     ..._state,
@@ -66,16 +75,33 @@ const reducer = (_state) => {
           }
         })
       : [],
-    rewards: rewards
-      ? rewards.map((_reward) => {
-          return {
-            ..._reward,
-            amount: offChainFormat(toBN(_reward.amount), rewardsToken.decimals),
-            // lockTime is expressed in blocks
-            lockTime: parseInt(lockTime * BLOCK_TIME),
-          }
-        })
-      : [],
+    rewards:
+      unlockedRewards && withdrawnRewards
+        ? [
+            ...unlockedRewards.map((_reward) => {
+              return {
+                ..._reward,
+                amount: offChainFormat(
+                  toBN(_reward.amount),
+                  rewardsToken.decimals
+                ),
+                lockTime: parseInt(lockTime * BLOCK_TIME),
+                state: UNLOCKED,
+              }
+            }),
+            ...withdrawnRewards.map((_reward) => {
+              return {
+                ..._reward,
+                amount: offChainFormat(
+                  toBN(_reward.amount),
+                  rewardsToken.decimals
+                ),
+                lockTime: parseInt(lockTime * BLOCK_TIME),
+                state: WITHDRAWN,
+              }
+            }),
+          ].sort((_r1, _r2) => _r1.lockDate - _r1.lockDate)
+        : [],
   }
 }
 

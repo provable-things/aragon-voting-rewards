@@ -136,7 +136,8 @@ const handleEvent = async (_nextState) => {
     if (_nextState.account) {
       return {
         ..._nextState,
-        rewards: await getRewardsInfo(account),
+        unlockedRewards: await getUnlockedRewardsInfo(account),
+        withdrawnReward: await getWithdrawnRewardsInfo(account),
       }
     }
 
@@ -158,7 +159,8 @@ const handleAccountChange = async (_nextState, { account }) => {
           _nextState.votingToken.address,
           account
         ),
-        rewards: await getRewardsInfo(account),
+        unlockedRewards: await getUnlockedRewardsInfo(account),
+        withdrawnReward: await getWithdrawnRewardsInfo(account),
       }
     }
 
@@ -198,7 +200,6 @@ const getEpochData = async () => {
 
     return {
       startBlock: lastRewardsDistributionBlock,
-      startBlock: await getBlockTimestamp(lastRewardsDistributionBlock),
       duration: await app.call('epochDuration').toPromise(),
       current: await app.call('currentEpoch').toPromise(),
       lockTime: await app.call('lockTime').toPromise(),
@@ -218,9 +219,28 @@ const getEpochData = async () => {
   }
 }
 
-const getRewardsInfo = async (_receiver) => {
+const getUnlockedRewardsInfo = async (_receiver) => {
   try {
-    const rewards = await app.call('getRewardsInfo', _receiver).toPromise()
+    const rewards = await app
+      .call('getUnlockedRewardsInfo', _receiver)
+      .toPromise()
+    return rewards.map(async (_reward) => {
+      return {
+        ..._reward,
+        lockDate: await getBlockTimestamp(_reward.lockBlock),
+      }
+    })
+  } catch (_err) {
+    console.error(`Failed to load rewards: ${_err.message}`)
+    return []
+  }
+}
+
+const getWithdrawnRewardsInfo = async (_receiver) => {
+  try {
+    const rewards = await app
+      .call('getWithdrawnRewardsInfo', _receiver)
+      .toPromise()
     return rewards.map(async (_reward) => {
       return {
         ..._reward,
