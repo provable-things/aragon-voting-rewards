@@ -30,13 +30,13 @@ const useEpochDetails = () => {
 
     const epochTermination =
       epoch && epoch.startBlock && epoch.duration
-        ? new Date((epoch.startBlock + epoch.duration) * 1000).toLocaleString()
+        ? new Date((epoch.startDate + epoch.duration) * 1000).toLocaleString()
         : '-'
 
     let epochRemainder, status
-    if (epoch && epoch.duration && epoch.startBlock) {
-      const start = epoch.startBlock * 1000
-      const end = (epoch.startBlock + epoch.duration) * 1000
+    if (epoch && epoch.duration && epoch.startDate) {
+      const start = epoch.startDate * 1000
+      const end = (epoch.startDate + epoch.duration) * 1000
       const now = new Date().getTime()
 
       epochRemainder = (end - now) / 1000
@@ -46,8 +46,7 @@ const useEpochDetails = () => {
       status = Math.round(((now - start) / (end - start)) * 100) / 100
     }
 
-    let minimum = '-'
-    let reward, partecipateWith, isElegible, votesInEpoch
+    let reward, partecipateWith, isElegible, votesInEpoch, minimum
     if (epoch) {
       const minimum = findMinimunBalanceInVotesForEpoch(
         votes,
@@ -56,8 +55,8 @@ const useEpochDetails = () => {
       )
 
       if (minimum) {
-        reward = strip(parseInt(minimun.toString()) * epoch.percentageRewards)
-        partecipateWith = strip(minimun.toString())
+        reward = strip(parseInt(minimum.toString()) * epoch.percentageRewards)
+        partecipateWith = strip(minimum.toString())
       }
 
       const eligibility = getElegibilityOnEpoch(
@@ -78,7 +77,7 @@ const useEpochDetails = () => {
       epochTermination,
       epochRemainder: epochRemainder ? epochRemainder : 0,
       status,
-      minimum,
+      minimum: minimum ? minimum : '-',
       reward: reward ? reward : '-',
       partecipateWith: partecipateWith ? partecipateWith : '-',
       isElegible,

@@ -200,6 +200,7 @@ const getEpochData = async () => {
 
     return {
       startBlock: lastRewardsDistributionBlock,
+      startDate: await getBlockTimestamp(lastRewardsDistributionBlock),
       duration: await app.call('epochDuration').toPromise(),
       current: await app.call('currentEpoch').toPromise(),
       lockTime: await app.call('lockTime').toPromise(),
