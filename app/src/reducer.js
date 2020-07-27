@@ -78,17 +78,22 @@ const reducer = (_state) => {
     rewards:
       unlockedRewards && withdrawnRewards
         ? [
-            ...unlockedRewards.map((_reward) => {
-              return {
-                ..._reward,
-                amount: offChainFormat(
-                  toBN(_reward.amount),
-                  rewardsToken.decimals
-                ),
-                lockTime: parseInt(lockTime * BLOCK_TIME),
-                state: UNLOCKED,
-              }
-            }),
+            ...unlockedRewards
+              .filter(
+                ({ amount, lockTime, lockBlock }) =>
+                  amount !== 0 && lockTime !== 0 && lockBlock !== 0
+              )
+              .map((_reward) => {
+                return {
+                  ..._reward,
+                  amount: offChainFormat(
+                    toBN(_reward.amount),
+                    rewardsToken.decimals
+                  ),
+                  lockTime: parseInt(_reward.lockTime * BLOCK_TIME),
+                  state: UNLOCKED,
+                }
+              }),
             ...withdrawnRewards.map((_reward) => {
               return {
                 ..._reward,
@@ -96,7 +101,7 @@ const reducer = (_state) => {
                   toBN(_reward.amount),
                   rewardsToken.decimals
                 ),
-                lockTime: parseInt(lockTime * BLOCK_TIME),
+                lockTime: parseInt(_reward.lockTime * BLOCK_TIME),
                 state: WITHDRAWN,
               }
             }),
