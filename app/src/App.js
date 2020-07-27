@@ -1,7 +1,7 @@
 import React, { Fragment } from 'react'
 import { useAppLogic } from './hooks'
 import { Button, Header, Main, SyncIndicator } from '@aragon/ui'
-import { useGuiStyle, useAppState, useAragonApi } from '@aragon/api-react'
+import { useGuiStyle, useAppState } from '@aragon/api-react'
 import { Row, Col } from 'react-bootstrap'
 import EpochDetails from './components/EpochDetails'
 import Rewards from './components/Rewards'
@@ -9,7 +9,6 @@ import Rewards from './components/Rewards'
 const App = () => {
   const { actions } = useAppLogic()
   const { isSyncing, account } = useAppState()
-  const { api } = useAragonApi()
 
   const { appearance } = useGuiStyle()
 
@@ -43,13 +42,6 @@ const App = () => {
               <Rewards />
             </Col>
           </Row>
-          <Button
-            onClick={() => {
-              api.openRewardsDistributionForEpoch(40).toPromise()
-            }}
-          >
-            open
-          </Button>
         </Fragment>
       )}
     </Main>
