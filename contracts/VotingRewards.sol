@@ -42,17 +42,11 @@ contract VotingRewards is AragonApp {
     // prettier-ignore
     string private constant ERROR_ADDRESS_NOT_CONTRACT = "VOTING_REWARD_ADDRESS_NOT_CONTRACT";
     // prettier-ignore
-    string private constant ERROR_VAULT_INSUFFICENT_TOKENS = "VOTING_REWARD_VAULT_INSUFFICENT_TOKENS";
-    // prettier-ignore
     string private constant ERROR_VOTING_NO_VOTES = "VOTING_REWARD_VOTING_NO_VOTES";
-    // prettier-ignore
-    string private constant ERROR_SENDER_NOT_VOTED = "VOTING_REWARD_NOT_VOTED";
     // prettier-ignore
     string private constant ERROR_TOO_MANY_MISSING_VOTES = "VOTING_REWARD_TOO_MANY_MISSING_VOTES";
     // prettier-ignore
     string private constant ERROR_EPOCH = "VOTING_REWARD_ERROR_EPOCH";
-    // prettier-ignore
-    string private constant ERROR_EPOCH_WRONG_VALUE = "VOTING_REWARD_ERROR_EPOCH_WRONG_VALUE";
     // prettier-ignore
     string private constant ERROR_PERCENTAGE_REWARD = "VOTING_REWARD_PERCENTAGE_REWARD";
     // prettier-ignore
@@ -134,7 +128,6 @@ contract VotingRewards is AragonApp {
         require(isContract(_dandelionVoting), ERROR_ADDRESS_NOT_CONTRACT);
         require(isContract(_rewardsToken), ERROR_ADDRESS_NOT_CONTRACT);
         require(_percentageRewards <= PCT_BASE, ERROR_PERCENTAGE_REWARD);
-        require(_lockTime >= 0, ERROR_WRONG_VALUE);
 
         baseVault = Vault(_baseVault);
         rewardsVault = Vault(_rewardsVault);
@@ -399,14 +392,14 @@ contract VotingRewards is AragonApp {
         uint64 currentBlockNumber = getBlockNumber64();
         previousRewardsDistributionBlockNumber[_beneficiary] = currentBlockNumber;
 
-        uint256 positionWhereInsert = _getEmptyRewardIndexForAddress(_beneficiary);
-        if (positionWhereInsert == addressUnlockedRewards[_beneficiary].length) {
+        uint256 positionWhereInsert = _getEmptyRewardIndexForAddress(
+            _beneficiary
+        );
+        if (
+            positionWhereInsert == addressUnlockedRewards[_beneficiary].length
+        ) {
             addressUnlockedRewards[_beneficiary].push(
-                Reward(
-                    rewardAmount,
-                    currentBlockNumber,
-                    lockTime
-                )
+                Reward(rewardAmount, currentBlockNumber, lockTime)
             );
         } else {
             addressUnlockedRewards[_beneficiary][positionWhereInsert] = Reward(
@@ -527,7 +520,8 @@ contract VotingRewards is AragonApp {
         returns (uint256)
     {
         Reward[] storage rewards = addressUnlockedRewards[_beneficiary];
-        uint256 numberOfUnlockedRewards = addressUnlockedRewards[_beneficiary].length;
+        uint256 numberOfUnlockedRewards = addressUnlockedRewards[_beneficiary]
+            .length;
 
         for (uint256 i = 0; i < numberOfUnlockedRewards; i++) {
             if (_isRewardEmpty(rewards[i])) {
@@ -542,7 +536,14 @@ contract VotingRewards is AragonApp {
      * @notice Check if a Reward is empty
      * @param _reward reward
      */
-    function _isRewardEmpty(Reward memory _reward) internal pure returns (bool) {
-        return _reward.amount == 0 && _reward.lockBlock == 0 && _reward.lockTime == 0;
+    function _isRewardEmpty(Reward memory _reward)
+        internal
+        pure
+        returns (bool)
+    {
+        return
+            _reward.amount == 0 &&
+            _reward.lockBlock == 0 &&
+            _reward.lockTime == 0;
     }
 }
