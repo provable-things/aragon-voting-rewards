@@ -14,6 +14,7 @@ const {
   getTotalReward,
   distributeRewardsToMany,
   distributeRewardsTo,
+  collectRewardsFor,
 } = require('./helpers/utils')
 
 const MiniMeToken = artifacts.require('MiniMeToken')
@@ -35,8 +36,6 @@ const EPOCH_BLOCKS = ONE_MINUTE_BLOCK * 20
 const PERCENTAGE_REWARD = '420000000000000000' // 42 * 100
 const LOCK_TIME_BLOCKS = ONE_MINUTE_BLOCK * 10
 const MISSING_VOTES_THRESHOLD = 2
-const UNLOCKED = 0
-const WITHDRAWN = 1
 const SUPPORT_REQUIRED_PCT = '910000000000000000' // 91% (high to facilitate tests since the value is irrilevant
 const MIN_ACCEPTED_QUORUM_PCT = '910000000000000000' // 91% (high to facilitate tests since the value is irrilevant
 const DURATION_BLOCKS = ONE_MINUTE_BLOCK * 10
@@ -766,7 +765,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           appManager
         )
         await distributeRewardsTo(votingReward, accounts[0], appManager)
-        const rewards = await votingReward.getRewardsInfo(accounts[0])
+        const rewards = await votingReward.getUnlockedRewardsInfo(accounts[0])
         assert.strictEqual(rewards.length, 1)
         assert.strictEqual(parseInt(rewards[0].amount), expectedReward)
       })
@@ -855,7 +854,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         )
 
         for (let account of accounts) {
-          const rewards = await votingReward.getRewardsInfo(account)
+          const rewards = await votingReward.getUnlockedRewardsInfo(account)
           // there is only 1 reward x user since there has been only one collectRewardsForMany
           assert.strictEqual(
             parseInt(rewards[0].amount),
@@ -955,7 +954,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         )
 
         for (let account of accounts) {
-          const rewards = await votingReward.getRewardsInfo(account)
+          const rewards = await votingReward.getUnlockedRewardsInfo(account)
           // there is only 1 reward x user since there has been only one collectRewardsForMany
           assert.strictEqual(
             parseInt(rewards[0].amount),
@@ -1040,7 +1039,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
 
         // expected locked 2 rewards
         for (let account of accounts) {
-          const rewards = await votingReward.getRewardsInfo(account)
+          const rewards = await votingReward.getUnlockedRewardsInfo(account)
           assert.strictEqual(
             parseInt(rewards[0].amount) + parseInt(rewards[1].amount),
             expectedRewardSingleUser * 2
@@ -1165,7 +1164,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         }
       }).timeout(50000)
 
-      it('Should change from Locked to Distributed', async () => {
+      it('Should change from Locked to Withdrawn', async () => {
         const numVotes = 10
         const startBlockNumberOfCurrentEpoch = await now()
         for (let voteId = 1; voteId <= numVotes; voteId++) {
@@ -1176,9 +1175,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
             appManager
           )
 
-          for (let account of accounts) {
-            await vote(voting, voteId, account)
-          }
+          await vote(voting, voteId, accounts[0])
         }
 
         await mineBlocks(EPOCH_BLOCKS)
@@ -1187,25 +1184,28 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           startBlockNumberOfCurrentEpoch,
           appManager
         )
-        await distributeRewardsToMany(votingReward, accounts, appManager, 5)
+        await distributeRewardsTo(votingReward, accounts[0], appManager)
         await closeRewardsDistributionForCurrentEpoch(votingReward, appManager)
 
-        for (let account of accounts) {
-          const rewards = await votingReward.getRewardsInfo(account)
-          for (let { state } of rewards) {
-            assert.strictEqual(parseInt(state), UNLOCKED)
-          }
-        }
+        let unlockedRewards = await votingReward.getUnlockedRewardsInfo(
+          accounts[0]
+        )
+        assert.strictEqual(unlockedRewards.length, 1)
 
         await mineBlocks(EPOCH_BLOCKS + LOCK_TIME_BLOCKS)
-        await collectRewardsForMany(votingReward, accounts, appManager)
+        await collectRewardsFor(votingReward, accounts[0], appManager)
 
-        for (let account of accounts) {
-          const rewards = await votingReward.getRewardsInfo(account)
-          for (let { state } of rewards) {
-            assert.strictEqual(parseInt(state), WITHDRAWN)
-          }
-        }
+        unlockedRewards = await votingReward.getUnlockedRewardsInfo(accounts[0])
+        unlockedRewards = unlockedRewards.filter(
+          ({ amount, lockBlock, lockTime }) =>
+            amount !== '0' && lockBlock !== '0' && lockTime !== '0'
+        )
+        assert.strictEqual(unlockedRewards.length, 0)
+
+        const withdrawnRewards = await votingReward.getUnlockedRewardsInfo(
+          accounts[0]
+        )
+        assert.strictEqual(withdrawnRewards.length, 1)
       }).timeout(50000)
 
       it('Should not be rewarded if number of votes = missingVotes = missingVotesThreshold', async () => {

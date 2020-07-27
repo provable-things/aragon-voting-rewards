@@ -82,6 +82,11 @@ const distributeRewardsTo = (_votingReward, _beneficiary, _appManager) =>
     from: _appManager,
   })
 
+const collectRewardsFor = (_votingReward, _beneficiary, _appManager) =>
+  _votingReward.collectRewardsFor(_beneficiary, {
+    from: _appManager,
+  })
+
 const openRewardsDistributionForEpoch = (
   _votingReward,
   _startFrom,
@@ -130,4 +135,5 @@ module.exports = {
   getTotalReward,
   distributeRewardsToMany,
   distributeRewardsTo,
+  collectRewardsFor,
 }
