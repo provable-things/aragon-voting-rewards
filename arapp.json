@@ -21,12 +21,12 @@
       "params": []
     },
     {
-      "name": "Open distribution for the current epoch",
+      "name": "Open rewards distribution for the current epoch",
       "id": "OPEN_REWARDS_DISTRIBUTION_ROLE",
       "params": []
     },
     {
-      "name": "Close distribution for the current epoch",
+      "name": "Close rewards distribution for the current epoch",
       "id": "CLOSE_REWARDS_DISTRIBUTION_ROLE",
       "params": []
     },
