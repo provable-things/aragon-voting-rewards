@@ -1,6 +1,6 @@
 {
   "name": "voting-rewards",
-  "version": "0.0.3",
+  "version": "1.0.0",
   "description": "An Aragon app that allows to get rewards in base of how many votes you made in a certain amount of time",
   "author": "allemanfredi@provable-things <alle.manfredi@gmail.com>",
   "scripts": {
