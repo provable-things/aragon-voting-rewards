@@ -385,8 +385,7 @@ contract VotingRewards is AragonApp {
         uint256 rewardAmount = _calculateReward(
             _beneficiary,
             startBlockNumberOfCurrentEpoch,
-            claimEnd,
-            missingVotesThreshold
+            claimEnd
         );
 
         uint64 currentBlockNumber = getBlockNumber64();
@@ -456,28 +455,31 @@ contract VotingRewards is AragonApp {
      * @param _beneficiary beneficiary
      * @param _fromBlock block from wich starting looking for votes
      * @param _toBlock   block to wich stopping looking for votes
-     * @param _missingVotesThreshold number of vote to which is possible to don't vote
      */
     function _calculateReward(
         address _beneficiary,
         uint64 _fromBlock,
-        uint64 _toBlock,
-        uint256 _missingVotesThreshold
+        uint64 _toBlock
     ) internal view returns (uint256) {
         uint256 missingVotes = 0;
         uint256 minimumBalance = 0;
         uint256 votesLength = dandelionVoting.votesLength();
+        uint64 voteDurationBlocks = dandelionVoting.durationBlocks();
         bool isFirstUserVoteInEpoch = true;
+
         // voteId starts from 1 in DandelionVoting
         for (uint256 voteId = votesLength; voteId >= 1; voteId--) {
             uint64 startBlock;
             (, , startBlock, , , , , , , , ) = dandelionVoting.getVote(voteId);
 
-            if (startBlock >= _fromBlock && startBlock <= _toBlock) {
-                DandelionVoting.VoterState voterState = dandelionVoting
-                    .getVoterState(voteId, _beneficiary);
-
-                if (voterState == DandelionVoting.VoterState.Absent) {
+            if (
+                startBlock.add(voteDurationBlocks) >= _fromBlock &&
+                startBlock.add(voteDurationBlocks) <= _toBlock
+            ) {
+                if (
+                    dandelionVoting.getVoterState(voteId, _beneficiary) ==
+                    DandelionVoting.VoterState.Absent
+                ) {
                     missingVotes = missingVotes.add(1);
                 } else {
                     uint256 votingTokenBalanceAtVote = MiniMeToken(
@@ -496,7 +498,7 @@ contract VotingRewards is AragonApp {
                 }
 
                 require(
-                    missingVotes <= _missingVotesThreshold,
+                    missingVotes <= missingVotesThreshold,
                     ERROR_TOO_MANY_MISSING_VOTES
                 );
             }

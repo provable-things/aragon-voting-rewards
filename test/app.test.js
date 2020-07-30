@@ -1231,6 +1231,73 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           'VAULT_TRANSFER_VALUE_ZERO'
         )
       })
+      it('Should be able to be rewarded (in the next epoch) even if a vote close into the next epoch', async () => {
+        let startBlockNumberOfCurrentEpoch = await now()
+
+        const expectedReward = await getTotalReward(
+          [accounts[0]],
+          miniMeToken,
+          PERCENTAGE_REWARD
+        )
+
+        // epoch 0
+        await mineBlocks(EPOCH_BLOCKS - 5)
+        await newVote(
+          voting,
+          executionTarget.address,
+          executionTarget.contract.methods.execute().encodeABI(),
+          appManager
+        )
+        await mineBlocks(5)
+        // epoch 1
+        await mineBlocks(5)
+        await vote(voting, 1, accounts[0])
+
+        await openRewardsDistributionForEpoch(
+          votingReward,
+          startBlockNumberOfCurrentEpoch,
+          appManager
+        )
+        await closeRewardsDistributionForCurrentEpoch(votingReward, appManager)
+        await mineBlocks(ONE_BLOCK)
+
+        startBlockNumberOfCurrentEpoch = await now()
+
+        //epoch 2
+        await mineBlocks(EPOCH_BLOCKS)
+        await openRewardsDistributionForEpoch(
+          votingReward,
+          startBlockNumberOfCurrentEpoch,
+          appManager
+        )
+        await distributeRewardsTo(votingReward, accounts[0], appManager)
+
+        const actualVaultBalance = await rewardsToken.balanceOf(
+          rewardsVault.address
+        )
+
+        assert.strictEqual(
+          expectedReward.toString(),
+          actualVaultBalance.toString()
+        )
+
+        await mineBlocks(LOCK_TIME_BLOCKS)
+        await collectRewardsFor(votingReward, accounts[0], appManager)
+
+        let unlockedRewards = await votingReward.getUnlockedRewardsInfo(
+          accounts[0]
+        )
+        unlockedRewards = unlockedRewards.filter(
+          ({ amount, lockBlock, lockTime }) =>
+            amount !== '0' && lockBlock !== '0' && lockTime !== '0'
+        )
+        assert.strictEqual(unlockedRewards.length, 0)
+
+        const withdrawnRewards = await votingReward.getUnlockedRewardsInfo(
+          accounts[0]
+        )
+        assert.strictEqual(withdrawnRewards.length, 1)
+      }).timeout(50000)
     })
   })
 })
