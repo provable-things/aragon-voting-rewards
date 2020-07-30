@@ -35,10 +35,10 @@ const App = () => {
             }
           />
           <Row>
-            <Col xs={12} xl={8}>
+            <Col xs={12}>
               <EpochDetails />
             </Col>
-            <Col xs={12} xl={4} className="mt-3 mt-xl-0">
+            <Col xs={12} className="mt-3">
               <Rewards />
             </Col>
           </Row>

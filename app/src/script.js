@@ -43,10 +43,7 @@ retryEvery(() =>
     .toPromise()
     .then(preInitizialize)
     .catch((err) => {
-      console.error(
-        'Could not start background script execution due to:',
-        err
-      )
+      console.error('Could not start background script execution due to:', err)
       throw err
     })
 )
@@ -137,7 +134,7 @@ const handleEvent = async (_nextState) => {
       return {
         ..._nextState,
         unlockedRewards: await getUnlockedRewardsInfo(account),
-        withdrawnReward: await getWithdrawnRewardsInfo(account),
+        withdrawnRewards: await getWithdrawnRewardsInfo(account),
       }
     }
 
@@ -160,7 +157,7 @@ const handleAccountChange = async (_nextState, { account }) => {
           account
         ),
         unlockedRewards: await getUnlockedRewardsInfo(account),
-        withdrawnReward: await getWithdrawnRewardsInfo(account),
+        withdrawnRewards: await getWithdrawnRewardsInfo(account),
       }
     }
 

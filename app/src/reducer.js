@@ -81,7 +81,7 @@ const reducer = (_state) => {
             ...unlockedRewards
               .filter(
                 ({ amount, lockTime, lockBlock }) =>
-                  amount !== 0 && lockTime !== 0 && lockBlock !== 0
+                  amount !== '0' && lockTime !== '0' && lockBlock !== '0'
               )
               .map((_reward) => {
                 return {
@@ -105,7 +105,7 @@ const reducer = (_state) => {
                 state: WITHDRAWN,
               }
             }),
-          ].sort((_r1, _r2) => _r1.lockDate - _r1.lockDate)
+          ].sort((_r1, _r2) => _r1.lockDate - _r2.lockDate)
         : [],
   }
 }
