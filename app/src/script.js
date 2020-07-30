@@ -44,7 +44,7 @@ retryEvery(() =>
     .then(preInitizialize)
     .catch((err) => {
       console.error(
-        'Could not start background script execution due to the contract not loading the token:',
+        'Could not start background script execution due to:',
         err
       )
       throw err
