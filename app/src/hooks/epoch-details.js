@@ -25,7 +25,7 @@ const useEpochDetails = () => {
 
     const percentageRewards =
       epoch && (epoch.percentageRewards || epoch.percentageRewards === 0)
-        ? `${epoch.percentageRewards * 100}%`
+        ? `${strip(epoch.percentageRewards * 100)}%`
         : '-'
 
     const epochTermination =

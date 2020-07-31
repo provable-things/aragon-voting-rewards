@@ -2,7 +2,14 @@ import { toBN } from 'web3-utils'
 import { offChainFormat } from './utils/amount-utils'
 import { UNLOCKED, WITHDRAWN } from './utils/rewards-utils'
 
-const BLOCK_TIME = 15
+const BLOCK_TIMES = {
+  main: 13,
+  kovan: 4,
+  rinkeby: 14,
+  ropsten: 11,
+  goerly: 15,
+  private: 3,
+}
 
 const reducer = (_state) => {
   if (_state === null) {
@@ -35,18 +42,19 @@ const reducer = (_state) => {
     settings: {
       ...settings,
       pctBase: settings.pctBase ? parseInt(settings.pctBase) : null,
+      blockTime: BLOCK_TIMES[settings.network.type],
     },
     epoch: epoch
       ? {
           ...epoch,
           duration: epoch.duration
-            ? parseInt(epoch.duration) * BLOCK_TIME
+            ? parseInt(epoch.duration) * BLOCK_TIMES[settings.network.type]
             : null,
           durationBlock: parseInt(epoch.duration),
           current: epoch.current ? parseInt(epoch.current) : null,
           startBlock: epoch.startBlock ? parseInt(epoch.startBlock) : null,
           lockTime: epoch.lockTime
-            ? parseInt(epoch.lockTime) * BLOCK_TIME
+            ? parseInt(epoch.lockTime) * BLOCK_TIMES[settings.network.type]
             : null,
           percentageRewards:
             parseInt(epoch.percentageRewards) / settings.pctBase,
@@ -90,7 +98,9 @@ const reducer = (_state) => {
                     toBN(_reward.amount),
                     rewardsToken.decimals
                   ),
-                  lockTime: parseInt(_reward.lockTime * BLOCK_TIME),
+                  lockTime: parseInt(
+                    _reward.lockTime * BLOCK_TIMES[settings.network.type]
+                  ),
                   state: UNLOCKED,
                 }
               }),
@@ -101,7 +111,9 @@ const reducer = (_state) => {
                   toBN(_reward.amount),
                   rewardsToken.decimals
                 ),
-                lockTime: parseInt(_reward.lockTime * BLOCK_TIME),
+                lockTime: parseInt(
+                  _reward.lockTime * BLOCK_TIMES[settings.network.type]
+                ),
                 state: WITHDRAWN,
               }
             }),

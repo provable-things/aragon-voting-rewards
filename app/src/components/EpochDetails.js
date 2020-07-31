@@ -9,12 +9,13 @@ import {
   IconClock,
   IconClose,
   Tag,
+  Help,
 } from '@aragon/ui'
 import styled from 'styled-components'
 import { useEpochDetails } from '../hooks/epoch-details'
 
 const EpochDetails = (_props) => {
-  const { rewardsToken, account } = useAppState()
+  const { rewardsToken, account, settings, epoch } = useAppState()
 
   const theme = useTheme()
 
@@ -48,7 +49,31 @@ const EpochDetails = (_props) => {
       </Detail>
       <Detail>
         <DetailText>End date:</DetailText>
-        <DetailValue>{epochTermination}</DetailValue>
+        <div
+          css={`
+            display: flex;
+            float: right;
+            font-weight: bold;
+          `}
+        >
+          {epochTermination}
+          <span
+            css={`
+              margin-top: 2px;
+              margin-left: 7px;
+            `}
+          >
+            <Help hint="Why is this an estimated time?">
+              Rewards are determined by vote's blocks which occur approximately
+              every <strong>{settings ? settings.blockTime : '-'}</strong>{' '}
+              seconds. The epoch will terminate at block{' '}
+              <strong>
+                {epoch ? epoch.startBlock + epoch.durationBlock : '-'}
+              </strong>
+              .
+            </Help>
+          </span>
+        </div>
       </Detail>
       <Detail>
         <DetailText>Partecipating with:</DetailText>
