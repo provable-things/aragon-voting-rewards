@@ -1,6 +1,6 @@
-import { toBN } from 'web3-utils'
 import { offChainFormat } from './utils/amount-utils'
 import { UNLOCKED, WITHDRAWN } from './utils/rewards-utils'
+import BigNumber from 'bignumber.js'
 
 const BLOCK_TIMES = {
   main: 13,
@@ -71,15 +71,24 @@ const reducer = (_state) => {
             snapshotBlock: parseInt(_vote.snapshotBlock),
             startBlock: parseInt(_vote.startBlock),
             minAcceptQuorum: parseInt(_vote.minAcceptQuorum, 10) / 18,
-            nay: offChainFormat(toBN(_vote.nay), rewardsToken.decimals),
-            yea: offChainFormat(toBN(_vote.yea), rewardsToken.decimals),
+            nay: offChainFormat(
+              new BigNumber(_vote.nay),
+              rewardsToken.decimals
+            ),
+            yea: offChainFormat(
+              new BigNumber(_vote.yea),
+              rewardsToken.decimals
+            ),
             votingPower: offChainFormat(
-              toBN(_vote.votingPower),
+              new BigNumber(_vote.votingPower),
               rewardsToken.decimals
             ),
             supportRequired: parseInt(_vote.supportRequired, 10) / 18,
             state: parseInt(_vote.state),
-            balance: offChainFormat(toBN(_vote.balance), votingToken.decimals),
+            balance: offChainFormat(
+              new BigNumber(_vote.balance),
+              votingToken.decimals
+            ),
           }
         })
       : [],
@@ -95,7 +104,7 @@ const reducer = (_state) => {
                 return {
                   ..._reward,
                   amount: offChainFormat(
-                    toBN(_reward.amount),
+                    new BigNumber(_reward.amount),
                     rewardsToken.decimals
                   ),
                   lockTime: parseInt(
@@ -108,7 +117,7 @@ const reducer = (_state) => {
               return {
                 ..._reward,
                 amount: offChainFormat(
-                  toBN(_reward.amount),
+                  new BigNumber(_reward.amount),
                   rewardsToken.decimals
                 ),
                 lockTime: parseInt(

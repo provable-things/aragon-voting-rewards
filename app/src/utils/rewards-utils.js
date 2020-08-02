@@ -9,7 +9,7 @@ const findMinimunBalanceInVotesForEpoch = (_votes, _from, _to) => {
     if (_vote.startBlock >= _from && _vote.startBlock <= _to) {
       if (!min) min = _vote.balance
 
-      if (min.cmp(_vote.balance) === -1) {
+      if (min.isLessThan(_vote.balance)) {
         min = _vote.balance
       }
     }
