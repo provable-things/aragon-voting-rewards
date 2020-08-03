@@ -120,3 +120,23 @@ and then publish.
 ```
 npx buidler publish "version or patch/minor/major" --network "rinkeby or mainnet"
 ```
+
+&nbsp;
+
+***
+
+&nbsp;
+
+## :white_check_mark: How to verify
+
+Add the following field to __`.env`__ file
+
+```
+ETHERSCAN_API_KEY=
+```
+
+and then verify.
+
+```
+npx buidler verify-contract --contract-name VotingRewards --address 'deployed contract address' "constructor arguments"
+```
