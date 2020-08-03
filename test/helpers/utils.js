@@ -12,7 +12,7 @@ const vote = (_voting, _voteId, _from) =>
     from: _from,
   })
 
-const distributeRewardsForAll = async (
+const distributeRewardsToMany = async (
   _votingReward,
   _beneficiaries,
   _appManager,
@@ -25,7 +25,7 @@ const distributeRewardsForAll = async (
     const from = chunk * _interval
     const to = chunk * _interval + _interval
 
-    await _votingReward.distributeRewardsForAll(
+    await _votingReward.distributeRewardsToMany(
       _beneficiaries.slice(from, to),
       {
         from: _appManager,
@@ -34,7 +34,7 @@ const distributeRewardsForAll = async (
     )
   }
 
-  await _votingReward.distributeRewardsForAll(
+  await _votingReward.distributeRewardsToMany(
     _beneficiaries.slice(
       _beneficiaries.length - remainder,
       _beneficiaries.length
@@ -46,7 +46,7 @@ const distributeRewardsForAll = async (
   )
 }
 
-const collectRewardsForAll = async (
+const collectRewardsForMany = async (
   _votingReward,
   _beneficiaries,
   _appManager,
@@ -59,13 +59,13 @@ const collectRewardsForAll = async (
     const from = chunk * _interval
     const to = chunk * _interval + _interval
 
-    await _votingReward.collectRewardsForAll(_beneficiaries.slice(from, to), {
+    await _votingReward.collectRewardsForMany(_beneficiaries.slice(from, to), {
       from: _appManager,
       gas: 9500000,
     })
   }
 
-  await _votingReward.collectRewardsForAll(
+  await _votingReward.collectRewardsForMany(
     _beneficiaries.slice(
       _beneficiaries.length - remainder,
       _beneficiaries.length
@@ -77,18 +77,27 @@ const collectRewardsForAll = async (
   )
 }
 
-const distributeRewardsFor = (_votingReward, _beneficiary, _appManager) =>
-  _votingReward.distributeRewardsFor(_beneficiary, {
+const distributeRewardsTo = (_votingReward, _beneficiary, _appManager) =>
+  _votingReward.distributeRewardsTo(_beneficiary, {
     from: _appManager,
   })
 
-const openDistributionForEpoch = (_votingReward, _startFrom, _appManager) =>
-  _votingReward.openDistributionForEpoch(_startFrom, {
+const collectRewardsFor = (_votingReward, _beneficiary, _appManager) =>
+  _votingReward.collectRewardsFor(_beneficiary, {
     from: _appManager,
   })
 
-const closeDistributionForCurrentEpoch = (_votingReward, _appManager) =>
-  _votingReward.closeDistributionForCurrentEpoch({
+const openRewardsDistributionForEpoch = (
+  _votingReward,
+  _startFrom,
+  _appManager
+) =>
+  _votingReward.openRewardsDistributionForEpoch(_startFrom, {
+    from: _appManager,
+  })
+
+const closeRewardsDistributionForCurrentEpoch = (_votingReward, _appManager) =>
+  _votingReward.closeRewardsDistributionForCurrentEpoch({
     from: _appManager,
   })
 
@@ -116,13 +125,15 @@ const getTotalReward = async (
 }
 
 module.exports = {
-  collectRewardsForAll,
+  collectRewardsForMany,
   newVote,
   vote,
-  openDistributionForEpoch,
-  closeDistributionForCurrentEpoch,
-  distributeRewardsFor,
+  openRewardsDistributionForEpoch,
+  closeRewardsDistributionForCurrentEpoch,
+  distributeRewardsTo,
   getAccountsBalance,
   getTotalReward,
-  distributeRewardsForAll,
+  distributeRewardsToMany,
+  distributeRewardsTo,
+  collectRewardsFor,
 }

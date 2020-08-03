@@ -1,13 +1,13 @@
 import React from 'react'
 import { Table, TableHeader, TableRow, TableCell, Text, Tag } from '@aragon/ui'
+import { useAppState } from '@aragon/api-react'
 import NoRewards from './NoRewards'
-import PropTypes from 'prop-types'
 import { strip } from '../utils/amount-utils'
 import { UNLOCKED, WITHDRAWN } from '../utils/rewards-utils'
 import { parseSeconds } from '../utils/time-utils'
 
 const Rewards = (_props) => {
-  const { rewards, rewardsToken } = _props
+  const { rewardsToken, rewards } = useAppState()
 
   const now = new Date().getTime() / 1000
 
@@ -50,11 +50,6 @@ const Rewards = (_props) => {
   ) : (
     <NoRewards />
   )
-}
-
-Rewards.propTypes = {
-  rewards: PropTypes.array,
-  rewardsToken: PropTypes.object,
 }
 
 export default Rewards

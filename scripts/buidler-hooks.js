@@ -3,9 +3,9 @@ const MOCK_TOKEN_BALANCE = '10000000000000000000000000'
 const MOCK_TOKEN_DECIMALS = 18
 const ONE_DAY_BLOCKS = 86400 / 15
 const EPOCH_BLOCKS = 50 // 1 minutes
-const PERCENTAGE_REWARD = '4200000000000000'
+const PERCENTAGE_REWARD = '420000000000000000'
 const LOCK_TIME = ONE_DAY_BLOCKS * 365
-const MISSING_VOTES_THREESHOLD = 1
+const MISSING_VOTES_THRESHOLD = 1
 const DURATION_BLOCKS = 2
 const BUFFER_BLOCKS = 5
 
@@ -64,7 +64,7 @@ module.exports = {
       0,
     ])
 
-    rewardsToken = await ERC20.new(
+    rewardToken = await ERC20.new(
       'Deposit Token',
       'DPT',
       MOCK_TOKEN_DECIMALS,
@@ -75,10 +75,10 @@ module.exports = {
     log(`Rewards Vault: ${rewardsVault.address}`)
     log(`MiniMeToken: ${miniMeToken.address}`)
     log(`Dandelion Voting: ${voting.address}`)
-    log(`Rewards Token: ${rewardsToken.address}`)
+    log(`Rewards Token: ${rewardToken.address}`)
     log(`TokenManager: ${tokenManager.address}`)
-    log(`ERC20: ${rewardsToken.address}`)
-    log(`${appManager} balance: ${await rewardsToken.balanceOf(appManager)}`)
+    log(`ERC20: ${rewardToken.address}`)
+    log(`${appManager} balance: ${await rewardToken.balanceOf(appManager)}`)
   },
 
   postInit: async ({ proxy }, { web3, artifacts }) => {
@@ -97,11 +97,11 @@ module.exports = {
       baseVault.address,
       rewardsVault.address,
       voting.address,
-      rewardsToken.address,
+      rewardToken.address,
       EPOCH_BLOCKS,
       PERCENTAGE_REWARD,
       LOCK_TIME,
-      MISSING_VOTES_THREESHOLD,
+      MISSING_VOTES_THRESHOLD,
     ]
   },
 

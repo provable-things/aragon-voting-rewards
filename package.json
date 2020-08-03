@@ -1,11 +1,11 @@
 {
-  "name": "voting-reward",
-  "version": "0.0.1",
+  "name": "voting-rewards",
+  "version": "1.1.0",
   "description": "An Aragon app that allows to get rewards in base of how many votes you made in a certain amount of time",
   "author": "allemanfredi@provable-things <alle.manfredi@gmail.com>",
   "scripts": {
     "postinstall": "yarn compile && yarn build-app",
-    "build-app": "cd app && npm install && cd ..",
+    "build-app": "cd app && yarn install && cd ..",
     "compile": "buidler compile --force",
     "test": "buidler test --network buidlerevm",
     "start": "buidler start",

@@ -102,7 +102,7 @@
         "type": "bool"
       },
       {
-        "name": "startDate",
+        "name": "startBlock",
         "type": "uint64"
       },
       {

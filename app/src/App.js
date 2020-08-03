@@ -1,21 +1,14 @@
 import React, { Fragment } from 'react'
 import { useAppLogic } from './hooks'
-import { Button, Header, Main, SidePanel, SyncIndicator } from '@aragon/ui'
-import { useGuiStyle } from '@aragon/api-react'
+import { Button, Header, Main, SyncIndicator } from '@aragon/ui'
+import { useGuiStyle, useAppState } from '@aragon/api-react'
 import { Row, Col } from 'react-bootstrap'
 import EpochDetails from './components/EpochDetails'
 import Rewards from './components/Rewards'
 
 const App = () => {
-  const {
-    isSyncing,
-    actions,
-    votes,
-    rewards,
-    rewardsToken,
-    epoch,
-    account,
-  } = useAppLogic()
+  const { actions } = useAppLogic()
+  const { isSyncing, account } = useAppState()
 
   const { appearance } = useGuiStyle()
 
@@ -30,7 +23,7 @@ const App = () => {
       ) : (
         <Fragment>
           <Header
-            primary="Voting Reward"
+            primary="Voting Rewards"
             secondary={
               <React.Fragment>
                 <Button
@@ -42,17 +35,11 @@ const App = () => {
             }
           />
           <Row>
-            <Col xs={12} xl={8}>
-              <EpochDetails
-                rewardsToken={rewardsToken}
-                votes={votes}
-                rewards={rewards}
-                epoch={epoch}
-                account={account}
-              />
+            <Col xs={12}>
+              <EpochDetails />
             </Col>
-            <Col xs={12} xl={4} className="mt-3 mt-xl-0">
-              <Rewards rewardsToken={rewardsToken} rewards={rewards} />
+            <Col xs={12} className="mt-3">
+              <Rewards />
             </Col>
           </Row>
         </Fragment>
