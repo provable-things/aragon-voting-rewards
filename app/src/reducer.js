@@ -1,4 +1,3 @@
-import { offChainFormat } from './utils/amount-utils'
 import { UNLOCKED, WITHDRAWN } from './utils/rewards-utils'
 import BigNumber from 'bignumber.js'
 
@@ -27,35 +26,25 @@ const reducer = (_state) => {
     }
   }
 
-  const {
-    votes,
-    epoch,
-    unlockedRewards,
-    withdrawnRewards,
-    rewardsToken,
-    votingToken,
-    settings,
-  } = _state
+  const { votes, epoch, unlockedRewards, withdrawnRewards, settings } = _state
 
   return {
     ..._state,
     settings: {
       ...settings,
-      pctBase: settings.pctBase ? parseInt(settings.pctBase) : null,
+      pctBase: parseInt(settings.pctBase),
       blockTime: BLOCK_TIMES[settings.network.type],
     },
     epoch: epoch
       ? {
           ...epoch,
-          duration: epoch.duration
-            ? parseInt(epoch.duration) * BLOCK_TIMES[settings.network.type]
-            : null,
+          duration:
+            parseInt(epoch.duration) * BLOCK_TIMES[settings.network.type],
           durationBlock: parseInt(epoch.duration),
-          current: epoch.current ? parseInt(epoch.current) : null,
-          startBlock: epoch.startBlock ? parseInt(epoch.startBlock) : null,
-          lockTime: epoch.lockTime
-            ? parseInt(epoch.lockTime) * BLOCK_TIMES[settings.network.type]
-            : null,
+          current: parseInt(epoch.current),
+          startBlock: parseInt(epoch.startBlock),
+          lockTime:
+            parseInt(epoch.lockTime) * BLOCK_TIMES[settings.network.type],
           percentageRewards:
             parseInt(epoch.percentageRewards) / settings.pctBase,
           missingVotesThreshold: parseInt(epoch.missingVotesThreshold),
@@ -71,24 +60,12 @@ const reducer = (_state) => {
             snapshotBlock: parseInt(_vote.snapshotBlock),
             startBlock: parseInt(_vote.startBlock),
             minAcceptQuorum: parseInt(_vote.minAcceptQuorum, 10) / 18,
-            nay: offChainFormat(
-              new BigNumber(_vote.nay),
-              rewardsToken.decimals
-            ),
-            yea: offChainFormat(
-              new BigNumber(_vote.yea),
-              rewardsToken.decimals
-            ),
-            votingPower: offChainFormat(
-              new BigNumber(_vote.votingPower),
-              rewardsToken.decimals
-            ),
+            nay: new BigNumber(_vote.nay),
+            yea: new BigNumber(_vote.yea),
+            votingPower: new BigNumber(_vote.votingPower),
             supportRequired: parseInt(_vote.supportRequired, 10) / 18,
             state: parseInt(_vote.state),
-            balance: offChainFormat(
-              new BigNumber(_vote.balance),
-              votingToken.decimals
-            ),
+            balance: new BigNumber(_vote.balance),
           }
         })
       : [],
@@ -103,10 +80,7 @@ const reducer = (_state) => {
               .map((_reward) => {
                 return {
                   ..._reward,
-                  amount: offChainFormat(
-                    new BigNumber(_reward.amount),
-                    rewardsToken.decimals
-                  ),
+                  amount: new BigNumber(_reward.amount),
                   lockTime: parseInt(
                     _reward.lockTime * BLOCK_TIMES[settings.network.type]
                   ),
@@ -116,10 +90,7 @@ const reducer = (_state) => {
             ...withdrawnRewards.map((_reward) => {
               return {
                 ..._reward,
-                amount: offChainFormat(
-                  new BigNumber(_reward.amount),
-                  rewardsToken.decimals
-                ),
+                amount: new BigNumber(_reward.amount),
                 lockTime: parseInt(
                   _reward.lockTime * BLOCK_TIMES[settings.network.type]
                 ),

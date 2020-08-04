@@ -8,7 +8,7 @@ import { strip } from '../utils/amount-utils'
 import { parseSeconds } from '../utils/time-utils'
 
 const useEpochDetails = () => {
-  const { epoch, votes } = useAppState()
+  const { epoch, votes, rewardsToken } = useAppState()
 
   return useMemo(() => {
     const current =
@@ -51,7 +51,8 @@ const useEpochDetails = () => {
       const minimum = findMinimunBalanceInVotesForEpoch(
         votes,
         epoch.startBlock,
-        epoch.startBlock + epoch.durationBlock
+        epoch.startBlock + epoch.durationBlock,
+        rewardsToken.decimals
       )
 
       if (minimum) {

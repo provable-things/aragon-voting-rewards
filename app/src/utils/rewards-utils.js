@@ -1,8 +1,10 @@
+import { offChainFormat } from '../utils/amount-utils'
+
 const UNLOCKED = 0
 const WITHDRAWN = 1
 const ABSENT = 0
 
-const findMinimunBalanceInVotesForEpoch = (_votes, _from, _to) => {
+const findMinimunBalanceInVotesForEpoch = (_votes, _from, _to, _decimals) => {
   let min = null
 
   _votes.forEach((_vote, id) => {
@@ -16,7 +18,7 @@ const findMinimunBalanceInVotesForEpoch = (_votes, _from, _to) => {
   })
 
   // should be safe since is already converted in offchain format
-  return !min ? 0 : min.toNumber()
+  return !min ? 0 : offChainFormat(min, _decimals).toNumber()
 }
 
 const getElegibilityOnEpoch = (_votes, _from, _to, _missingVotesThreshold) => {
