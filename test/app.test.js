@@ -1,6 +1,6 @@
 const { assert } = require('chai')
-const { assertRevert } = require('@aragon/contract-test-helpers/assertThrow')
-const { getEventArgument } = require('@aragon/contract-test-helpers/events')
+const { assertRevert } = require('@aragon/test-helpers/assertThrow')
+const { getEventArgument } = require('@aragon/test-helpers/events')
 const { newDao, newApp } = require('./helpers/dao')
 const { setPermission, setOpenPermission } = require('./helpers/permissions')
 const { now, mineBlocks } = require('./helpers/time-travel')
