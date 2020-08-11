@@ -464,9 +464,8 @@ contract VotingRewards is AragonApp {
         uint64 voteDurationBlocks = dandelionVoting.durationBlocks();
 
         // NOTE: balance at the end of an epoch
-        uint256 minimumBalance = MiniMeToken(dandelionVoting.token()).balanceOf(
-            _beneficiary
-        );
+        uint256 minimumBalance = MiniMeToken(dandelionVoting.token())
+            .balanceOfAt(_beneficiary, _toBlock);
 
         for (
             uint256 voteId = dandelionVoting.votesLength();
