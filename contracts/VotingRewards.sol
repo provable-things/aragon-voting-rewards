@@ -468,7 +468,6 @@ contract VotingRewards is AragonApp {
             _beneficiary
         );
 
-        // voteId starts from 1 in DandelionVoting
         for (
             uint256 voteId = dandelionVoting.votesLength();
             voteId >= 1;
