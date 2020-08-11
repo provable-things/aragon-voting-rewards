@@ -42,8 +42,6 @@ contract VotingRewards is AragonApp {
     // prettier-ignore
     string private constant ERROR_ADDRESS_NOT_CONTRACT = "VOTING_REWARD_ADDRESS_NOT_CONTRACT";
     // prettier-ignore
-    string private constant ERROR_VOTING_NO_VOTES = "VOTING_REWARD_VOTING_NO_VOTES";
-    // prettier-ignore
     string private constant ERROR_TOO_MANY_MISSING_VOTES = "VOTING_REWARD_TOO_MANY_MISSING_VOTES";
     // prettier-ignore
     string private constant ERROR_EPOCH = "VOTING_REWARD_ERROR_EPOCH";
@@ -198,7 +196,6 @@ contract VotingRewards is AragonApp {
         external
         auth(DISTRIBUTE_REWARD_ROLE)
     {
-        require(dandelionVoting.votesLength() > 0, ERROR_VOTING_NO_VOTES);
         require(
             isDistributionOpen,
             ERROR_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED
@@ -339,7 +336,7 @@ contract VotingRewards is AragonApp {
         view
         returns (Reward[])
     {
-        Reward[] rewards = addressUnlockedRewards[_beneficiary];
+        Reward[] storage rewards = addressUnlockedRewards[_beneficiary];
         return rewards;
     }
 
@@ -352,7 +349,7 @@ contract VotingRewards is AragonApp {
         view
         returns (Reward[])
     {
-        Reward[] rewards = addressWithdrawnRewards[_beneficiary];
+        Reward[] storage rewards = addressWithdrawnRewards[_beneficiary];
         return rewards;
     }
 
@@ -382,11 +379,13 @@ contract VotingRewards is AragonApp {
         uint64 claimEnd = startBlockNumberOfCurrentEpoch.add(epochDuration);
         require(claimEnd > lastBlockDistributedReward, ERROR_EPOCH);
 
-        uint256 rewardAmount = _calculateReward(
+        (uint256 rewardAmount, bool isEligible) = _calculateReward(
             _beneficiary,
             startBlockNumberOfCurrentEpoch,
             claimEnd
         );
+
+        require(isEligible, ERROR_TOO_MANY_MISSING_VOTES);
 
         uint64 currentBlockNumber = getBlockNumber64();
         previousRewardsDistributionBlockNumber[_beneficiary] = currentBlockNumber;
@@ -450,7 +449,7 @@ contract VotingRewards is AragonApp {
 
     /**
      * @notice Reward is calculated as the minimum balance between the
-     *         end of an epoch (now) and the balance at the first
+     *         end of an epoch and the balance at the first
      *         vote in an epoch (in percentage) for each vote happened within the epoch
      * @param _beneficiary beneficiary
      * @param _fromBlock block from wich starting looking for votes
@@ -460,15 +459,21 @@ contract VotingRewards is AragonApp {
         address _beneficiary,
         uint64 _fromBlock,
         uint64 _toBlock
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256, bool) {
         uint256 missingVotes = 0;
-        uint256 minimumBalance = 0;
-        uint256 votesLength = dandelionVoting.votesLength();
         uint64 voteDurationBlocks = dandelionVoting.durationBlocks();
-        bool isFirstUserVoteInEpoch = true;
+
+        // NOTE: balance at the end of an epoch
+        uint256 minimumBalance = MiniMeToken(dandelionVoting.token()).balanceOf(
+            _beneficiary
+        );
 
         // voteId starts from 1 in DandelionVoting
-        for (uint256 voteId = votesLength; voteId >= 1; voteId--) {
+        for (
+            uint256 voteId = dandelionVoting.votesLength();
+            voteId >= 1;
+            voteId--
+        ) {
             uint64 startBlock;
             (, , startBlock, , , , , , , , ) = dandelionVoting.getVote(voteId);
 
@@ -481,35 +486,28 @@ contract VotingRewards is AragonApp {
                     DandelionVoting.VoterState.Absent
                 ) {
                     missingVotes = missingVotes.add(1);
-                } else {
-                    uint256 votingTokenBalanceAtVote = MiniMeToken(
-                        dandelionVoting.token()
-                    )
-                        .balanceOfAt(_beneficiary, startBlock);
-
-                    if (isFirstUserVoteInEpoch) {
-                        isFirstUserVoteInEpoch = false;
-                        minimumBalance = votingTokenBalanceAtVote;
-                    }
-
-                    if (votingTokenBalanceAtVote < minimumBalance) {
-                        minimumBalance = votingTokenBalanceAtVote;
-                    }
+                    if (missingVotes > missingVotesThreshold) return (0, false);
                 }
 
-                require(
-                    missingVotes <= missingVotesThreshold,
-                    ERROR_TOO_MANY_MISSING_VOTES
-                );
+                uint256 votingTokenBalanceAtVote = MiniMeToken(
+                    dandelionVoting.token()
+                )
+                    .balanceOfAt(_beneficiary, startBlock);
+
+                if (votingTokenBalanceAtVote < minimumBalance) {
+                    minimumBalance = votingTokenBalanceAtVote;
+                }
             }
 
             if (startBlock < _fromBlock) break;
         }
 
-        return
+        return (
             minimumBalance > 0
                 ? (minimumBalance).mul(percentageRewards).div(PCT_BASE)
-                : minimumBalance;
+                : minimumBalance,
+            true
+        );
     }
 
     /**
