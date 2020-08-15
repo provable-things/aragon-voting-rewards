@@ -133,8 +133,8 @@ const handleEvent = async (_nextState) => {
     if (_nextState.account) {
       return {
         ..._nextState,
-        unlockedRewards: await getUnlockedRewardsInfo(account),
-        withdrawnRewards: await getWithdrawnRewardsInfo(account),
+        unlockedRewards: await getUnlockedRewardsInfo(_nextState.account),
+        withdrawnRewards: await getWithdrawnRewardsInfo(_nextState.account),
       }
     }
 
