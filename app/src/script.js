@@ -222,12 +222,12 @@ const getUnlockedRewardsInfo = async (_receiver) => {
     const rewards = await app
       .call('getUnlockedRewardsInfo', _receiver)
       .toPromise()
-    return rewards.map(async (_reward) => {
-      return {
-        ..._reward,
-        lockDate: await getBlockTimestamp(_reward.lockBlock),
-      }
-    })
+
+    for (let reward of rewards) {
+      reward.lockDate = await getBlockTimestamp(reward.lockBlock)
+    }
+
+    return rewards
   } catch (_err) {
     console.error(`Failed to load rewards: ${_err.message}`)
     return []
@@ -239,12 +239,12 @@ const getWithdrawnRewardsInfo = async (_receiver) => {
     const rewards = await app
       .call('getWithdrawnRewardsInfo', _receiver)
       .toPromise()
-    return rewards.map(async (_reward) => {
-      return {
-        ..._reward,
-        lockDate: await getBlockTimestamp(_reward.lockBlock),
-      }
-    })
+
+    for (let reward of rewards) {
+      reward.lockDate = await getBlockTimestamp(reward.lockBlock)
+    }
+
+    return rewards
   } catch (_err) {
     console.error(`Failed to load rewards: ${_err.message}`)
     return []
