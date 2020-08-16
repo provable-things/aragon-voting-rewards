@@ -5,11 +5,11 @@ import NoRewards from './NoRewards'
 import { strip } from '../utils/amount-utils'
 import { UNLOCKED, WITHDRAWN } from '../utils/rewards-utils'
 import { parseSeconds } from '../utils/time-utils'
+import { useRewards } from '../hooks/rewards'
 
 const Rewards = (_props) => {
-  const { rewardsToken, rewards } = useAppState()
-
-  const now = new Date().getTime() / 1000
+  const { rewardsToken } = useAppState()
+  const rewards = useRewards()
 
   return rewards && rewards.length > 0 && rewardsToken ? (
     <Table
@@ -19,13 +19,11 @@ const Rewards = (_props) => {
         </TableRow>
       }
     >
-      {rewards.map(({ amount, state, lockDate, lockTime }, _index) => {
+      {rewards.map(({ amountWithSymbol, state, remainder }, _index) => {
         return (
           <TableRow key={_index}>
             <TableCell>
-              <Text>{`${strip(amount.toString())} ${
-                rewardsToken.symbol
-              }`}</Text>
+              <Text>{amountWithSymbol}</Text>
             </TableCell>
             <TableCell>
               {state === WITHDRAWN ? (
@@ -39,9 +37,7 @@ const Rewards = (_props) => {
                 font-weight: bold;
               `}
             >
-              {state === UNLOCKED
-                ? parseSeconds(lockDate + lockTime - now)
-                : 'Completed'}
+              {state === UNLOCKED ? remainder : 'Collectable'}
             </TableCell>
           </TableRow>
         )
