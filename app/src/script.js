@@ -110,12 +110,17 @@ function initializeState(_initParams) {
       const epoch = await getEpochData()
       const pctBase = await app.call('PCT_BASE').toPromise()
 
+      const currentBlock = await getCurrentBlockNumber()
+      const currentTimestampBlock = await getBlockTimestamp('latest')
+
       return {
         ..._initParams,
         ..._cachedState,
         settings: {
           ...settings,
           pctBase,
+          currentBlock,
+          currentTimestampBlock,
         },
         rewardsToken,
         votingToken,
@@ -148,16 +153,23 @@ const handleEvent = async (_nextState) => {
 const handleAccountChange = async (_nextState, { account }) => {
   try {
     if (account) {
+      const { dandelionVotingAddress, votingToken, rewardsToken } = _nextState
+
       return {
         ..._nextState,
         account,
         votes: await getVotes(
-          _nextState.dandelionVotingAddress,
-          _nextState.votingToken.address,
+          dandelionVotingAddress,
+          votingToken.address,
           account
         ),
         unlockedRewards: await getUnlockedRewardsInfo(account),
         withdrawnRewards: await getWithdrawnRewardsInfo(account),
+        rewardsTokenBalance: await getTokenBalance(
+          rewardsToken.address,
+          rewardsToken.decimals,
+          account
+        ),
       }
     }
 
@@ -198,7 +210,7 @@ const getEpochData = async () => {
     return {
       startBlock: lastRewardsDistributionBlock,
       startDate: await getBlockTimestamp(lastRewardsDistributionBlock),
-      duration: await app.call('epochDuration').toPromise(),
+      durationBlock: await app.call('epochDuration').toPromise(),
       current: await app.call('currentEpoch').toPromise(),
       lockTime: await app.call('lockTime').toPromise(),
       percentageRewards: await app.call('percentageRewards').toPromise(),
@@ -210,7 +222,7 @@ const getEpochData = async () => {
     console.error(`Failed to load epoch data: ${_err.message}`)
     return {
       startBlock: null,
-      duration: null,
+      durationBlock: null,
       current: null,
       lockTime: null,
     }
@@ -322,5 +334,25 @@ const getBlockTimestamp = async (_blockNumber) => {
   } catch (_err) {
     console.error(`Failed to load block timestamp: ${_err.message}`)
     throw new Error(_err)
+  }
+}
+
+const getCurrentBlockNumber = async () => {
+  try {
+    const { number } = await app.web3Eth('getBlock', 'latest').toPromise()
+    return number
+  } catch (_err) {
+    console.error(`Failed to load block number: ${_err.message}`)
+    throw new Error(_err)
+  }
+}
+
+const getTokenBalance = (_tokenAddress, _tokenDecimals, _address) => {
+  try {
+    const token = app.external(_tokenAddress, ERC20Abi)
+    return token.balanceOf(_address).toPromise()
+  } catch (_err) {
+    console.error(`Failed to load token balance: ${_err.message}`)
+    throw new Error(_err.message)
   }
 }

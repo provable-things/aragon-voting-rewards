@@ -4,8 +4,14 @@ const UNLOCKED = 0
 const WITHDRAWN = 1
 const ABSENT = 0
 
-const findMinimunBalanceInVotesForEpoch = (_votes, _from, _to, _decimals) => {
-  let min = null
+const findMinimunBalanceInVotesForEpoch = (
+  _votes,
+  _from,
+  _to,
+  _decimals,
+  _currentBalance
+) => {
+  let min = _currentBalance
 
   _votes.forEach((_vote, id) => {
     if (_vote.startBlock >= _from && _vote.startBlock <= _to) {

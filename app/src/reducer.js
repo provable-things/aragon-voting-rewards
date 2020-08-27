@@ -1,19 +1,11 @@
 import { UNLOCKED, WITHDRAWN } from './utils/rewards-utils'
 import BigNumber from 'bignumber.js'
 
-const BLOCK_TIMES = {
-  main: 13,
-  kovan: 4,
-  rinkeby: 14,
-  ropsten: 11,
-  goerly: 15,
-  private: 3,
-}
-
 const reducer = (_state) => {
   if (_state === null) {
     return {
       account: null,
+      rewardsTokenBalance: null,
       settings: null,
       dandelionVoting: null,
       baseVault: null,
@@ -28,25 +20,29 @@ const reducer = (_state) => {
     }
   }
 
-  const { votes, epoch, unlockedRewards, withdrawnRewards, settings } = _state
+  const {
+    votes,
+    rewardsTokenBalance,
+    epoch,
+    unlockedRewards,
+    withdrawnRewards,
+    settings,
+  } = _state
 
   return {
     ..._state,
     settings: {
       ...settings,
       pctBase: parseInt(settings.pctBase),
-      blockTime: BLOCK_TIMES[settings.network.type],
     },
+    rewardsTokenBalance: new BigNumber(rewardsTokenBalance),
     epoch: epoch
       ? {
           ...epoch,
-          duration:
-            parseInt(epoch.duration) * BLOCK_TIMES[settings.network.type],
-          durationBlock: parseInt(epoch.duration),
+          durationBlock: parseInt(epoch.durationBlock),
           current: parseInt(epoch.current),
           startBlock: parseInt(epoch.startBlock),
-          lockTime:
-            parseInt(epoch.lockTime) * BLOCK_TIMES[settings.network.type],
+          lockTime: parseInt(epoch.lockTime),
           percentageRewards:
             parseInt(epoch.percentageRewards) / settings.pctBase,
           missingVotesThreshold: parseInt(epoch.missingVotesThreshold),
@@ -83,9 +79,7 @@ const reducer = (_state) => {
                 return {
                   ..._reward,
                   amount: new BigNumber(_reward.amount),
-                  lockTime: parseInt(
-                    _reward.lockTime * BLOCK_TIMES[settings.network.type]
-                  ),
+                  lockTime: parseInt(_reward.lockTime),
                   state: UNLOCKED,
                 }
               }),
@@ -93,9 +87,7 @@ const reducer = (_state) => {
               return {
                 ..._reward,
                 amount: new BigNumber(_reward.amount),
-                lockTime: parseInt(
-                  _reward.lockTime * BLOCK_TIMES[settings.network.type]
-                ),
+                lockTime: parseInt(_reward.lockTime),
                 state: WITHDRAWN,
               }
             }),
