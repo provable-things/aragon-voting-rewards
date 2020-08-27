@@ -19,21 +19,21 @@ contract VotingRewards is AragonApp {
     // prettier-ignore
     bytes32 public constant CHANGE_EPOCH_DURATION_ROLE = keccak256("CHANGE_EPOCH_DURATION_ROLE");
     // prettier-ignore
-    bytes32 public constant CHANGE_REWARD_TOKEN_ROLE = keccak256("CHANGE_REWARD_TOKEN_ROLE");
+    bytes32 public constant CHANGE_LOCK_TIME_ROLE = keccak256("CHANGE_LOCK_TIME_ROLE");
     // prettier-ignore
     bytes32 public constant CHANGE_MISSING_VOTES_THRESHOLD_ROLE = keccak256("CHANGE_MISSING_VOTES_THRESHOLD_ROLE");
-    // prettier-ignore
-    bytes32 public constant CHANGE_LOCK_TIME_ROLE = keccak256("CHANGE_LOCK_TIME_ROLE");
     // prettier-ignore
     bytes32 public constant OPEN_REWARDS_DISTRIBUTION_ROLE = keccak256("OPEN_REWARDS_DISTRIBUTION_ROLE");
     // prettier-ignore
     bytes32 public constant CLOSE_REWARDS_DISTRIBUTION_ROLE = keccak256("CLOSE_REWARDS_DISTRIBUTION_ROLE");
     // prettier-ignore
-    bytes32 public constant DISTRIBUTE_REWARD_ROLE = keccak256("DISTRIBUTE_REWARD_ROLE");
+    bytes32 public constant DISTRIBUTE_REWARDS_ROLE = keccak256("DISTRIBUTE_REWARDS_ROLE");
     // prettier-ignore
     bytes32 public constant CHANGE_PERCENTAGE_REWARDS_ROLE = keccak256("CHANGE_PERCENTAGE_REWARDS_ROLE");
     // prettier-ignore
     bytes32 public constant CHANGE_VAULT_ROLE = keccak256("CHANGE_VAULT_ROLE");
+    // prettier-ignore
+    bytes32 public constant CHANGE_REWARDS_TOKEN_ROLE = keccak256("CHANGE_REWARDS_TOKEN_ROLE");
     // prettier-ignore
     bytes32 public constant CHANGE_VOTING_ROLE = keccak256("CHANGE_VOTING_ROLE");
 
@@ -42,8 +42,6 @@ contract VotingRewards is AragonApp {
     // prettier-ignore
     string private constant ERROR_ADDRESS_NOT_CONTRACT = "VOTING_REWARDS_ADDRESS_NOT_CONTRACT";
     // prettier-ignore
-    string private constant ERROR_TOO_MANY_MISSING_VOTES = "VOTING_REWARDS_TOO_MANY_MISSING_VOTES";
-    // prettier-ignore
     string private constant ERROR_EPOCH = "VOTING_REWARDS_ERROR_EPOCH";
     // prettier-ignore
     string private constant ERROR_PERCENTAGE_REWARD = "VOTING_REWARDS_PERCENTAGE_REWARD";
@@ -51,8 +49,6 @@ contract VotingRewards is AragonApp {
     string private constant ERROR_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED = "VOTING_REWARDS_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED";
     // prettier-ignore
     string private constant ERROR_EPOCH_REWARDS_DISTRIBUTION_ALREADY_OPENED = "VOTING_REWARDS_EPOCH_REWARDS_DISTRIBUTION_ALREADY_OPENED";
-    // prettier-ignore
-    string private constant ERROR_WRONG_VALUE = "VOTING_REWARDS_WRONG_VALUE";
     // prettier-ignore
     string private constant ERROR_NO_REWARDS = "VOTING_REWARDS_NO_REWARDS";
 
@@ -64,6 +60,7 @@ contract VotingRewards is AragonApp {
 
     Vault public baseVault;
     Vault public rewardsVault;
+    DandelionVoting public dandelionVoting;
 
     address public rewardsToken;
     uint256 public percentageRewards;
@@ -78,12 +75,12 @@ contract VotingRewards is AragonApp {
 
     bool public isDistributionOpen;
 
-    // REMOVE
     mapping(address => Reward[]) public addressUnlockedRewards;
     mapping(address => Reward[]) public addressWithdrawnRewards;
 
     event BaseVaultChanged(address baseVault);
     event RewardsVaultChanged(address rewardsVault);
+    event DandelionVotingChanged(address dandelionVoting);
     event PercentageRewardsChanged(uint256 percentageRewards);
     event RewardDistributed(
         address beneficiary,
@@ -111,6 +108,7 @@ contract VotingRewards is AragonApp {
     function initialize(
         address _baseVault,
         address _rewardsVault,
+        address _dandelionVoting,
         address _rewardsToken,
         uint64 _epochDuration,
         uint256 _percentageRewards,
@@ -119,11 +117,13 @@ contract VotingRewards is AragonApp {
     ) external onlyInit {
         require(isContract(_baseVault), ERROR_ADDRESS_NOT_CONTRACT);
         require(isContract(_rewardsVault), ERROR_ADDRESS_NOT_CONTRACT);
+        require(isContract(_dandelionVoting), ERROR_ADDRESS_NOT_CONTRACT);
         require(isContract(_rewardsToken), ERROR_ADDRESS_NOT_CONTRACT);
         require(_percentageRewards <= PCT_BASE, ERROR_PERCENTAGE_REWARD);
 
         baseVault = Vault(_baseVault);
         rewardsVault = Vault(_rewardsVault);
+        dandelionVoting = DandelionVoting(_dandelionVoting);
         rewardsToken = _rewardsToken;
         epochDuration = _epochDuration;
         percentageRewards = _percentageRewards;
@@ -189,7 +189,7 @@ contract VotingRewards is AragonApp {
     function distributeRewardsToMany(
         address[] _beneficiaries,
         uint256[] _amount
-    ) external auth(DISTRIBUTE_REWARD_ROLE) returns (bool) {
+    ) external auth(DISTRIBUTE_REWARDS_ROLE) returns (bool) {
         require(
             isDistributionOpen,
             ERROR_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED
@@ -213,7 +213,7 @@ contract VotingRewards is AragonApp {
      */
     function distributeRewardsTo(address _beneficiary, uint256 _amount)
         external
-        auth(DISTRIBUTE_REWARD_ROLE)
+        auth(DISTRIBUTE_REWARDS_ROLE)
         returns (bool)
     {
         require(
@@ -247,7 +247,7 @@ contract VotingRewards is AragonApp {
         external
         auth(CHANGE_EPOCH_DURATION_ROLE)
     {
-        require(_epochDuration > 0, ERROR_WRONG_VALUE);
+        require(_epochDuration > 0, ERROR_EPOCH);
         epochDuration = _epochDuration;
 
         emit EpochDurationChanged(_epochDuration);
@@ -307,6 +307,20 @@ contract VotingRewards is AragonApp {
     }
 
     /**
+     * @notice Change Dandelion Voting contract address
+     * @param _dandelionVoting new dandelionVoting address
+     */
+    function changeDandelionVotingContractAddress(address _dandelionVoting)
+        external
+        auth(CHANGE_VOTING_ROLE)
+    {
+        require(isContract(_dandelionVoting), ERROR_ADDRESS_NOT_CONTRACT);
+        dandelionVoting = DandelionVoting(_dandelionVoting);
+
+        emit DandelionVotingChanged(_dandelionVoting);
+    }
+
+    /**
      * @notice Change percentage reward
      * @param _percentageRewards new percentage
      * @dev PCT_BASE is the maximun allowed percentage
@@ -327,7 +341,7 @@ contract VotingRewards is AragonApp {
      */
     function changeRewardsTokenContractAddress(address _rewardsToken)
         external
-        auth(CHANGE_PERCENTAGE_REWARDS_ROLE)
+        auth(CHANGE_REWARDS_TOKEN_ROLE)
     {
         require(isContract(_rewardsToken), ERROR_ADDRESS_NOT_CONTRACT);
         rewardsToken = _rewardsToken;

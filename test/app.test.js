@@ -58,15 +58,15 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
   let TRANSFER_ROLE,
     CHANGE_EPOCH_DURATION_ROLE,
     CHANGE_VAULT_ROLE,
-    CHANGE_VOTING_ROLE,
     CREATE_VOTES_ROLE,
     CHANGE_PERCENTAGE_REWARDS_ROLE,
-    DISTRIBUTE_REWARD_ROLE,
+    DISTRIBUTE_REWARDS_ROLE,
     OPEN_REWARDS_DISTRIBUTION_ROLE,
     CLOSE_REWARDS_DISTRIBUTION_ROLE,
-    CHANGE_MISSING_VOTES_THRESHOLD_ROLE,
     CHANGE_LOCK_TIME_ROLE,
-    CHANGE_REWARD_TOKEN_ROLE
+    CHANGE_REWARDS_TOKEN_ROLE,
+    CHANGE_VOTING_ROLE,
+    CHANGE_MISSING_VOTES_THRESHOLD_ROLE
 
   const NOT_CONTRACT = appManager
 
@@ -74,14 +74,14 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
     votingRewardBase = await VotingRewards.new()
     CHANGE_EPOCH_DURATION_ROLE = await votingRewardBase.CHANGE_EPOCH_DURATION_ROLE()
     CHANGE_VAULT_ROLE = await votingRewardBase.CHANGE_VAULT_ROLE()
-    CHANGE_VOTING_ROLE = await votingRewardBase.CHANGE_VOTING_ROLE()
     CHANGE_PERCENTAGE_REWARDS_ROLE = await votingRewardBase.CHANGE_PERCENTAGE_REWARDS_ROLE()
-    DISTRIBUTE_REWARD_ROLE = await votingRewardBase.DISTRIBUTE_REWARD_ROLE()
+    DISTRIBUTE_REWARDS_ROLE = await votingRewardBase.DISTRIBUTE_REWARDS_ROLE()
     OPEN_REWARDS_DISTRIBUTION_ROLE = await votingRewardBase.OPEN_REWARDS_DISTRIBUTION_ROLE()
     CLOSE_REWARDS_DISTRIBUTION_ROLE = await votingRewardBase.CLOSE_REWARDS_DISTRIBUTION_ROLE()
-    CHANGE_MISSING_VOTES_THRESHOLD_ROLE = await votingRewardBase.CHANGE_MISSING_VOTES_THRESHOLD_ROLE()
     CHANGE_LOCK_TIME_ROLE = await votingRewardBase.CHANGE_LOCK_TIME_ROLE()
-    CHANGE_REWARD_TOKEN_ROLE = await votingRewardBase.CHANGE_REWARD_TOKEN_ROLE()
+    CHANGE_REWARDS_TOKEN_ROLE = await votingRewardBase.CHANGE_REWARDS_TOKEN_ROLE()
+    CHANGE_VOTING_ROLE = await votingRewardBase.CHANGE_VOTING_ROLE()
+    CHANGE_MISSING_VOTES_THRESHOLD_ROLE = await votingRewardBase.CHANGE_MISSING_VOTES_THRESHOLD_ROLE()
 
     votingBase = await Voting.new()
     CREATE_VOTES_ROLE = await votingBase.CREATE_VOTES_ROLE()
@@ -168,6 +168,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         votingReward.initialize(
           NOT_CONTRACT,
           rewardsVault.address,
+          voting.address,
           ETH_ADDRESS,
           EPOCH_BLOCKS,
           PERCENTAGE_REWARD,
@@ -181,6 +182,23 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
     it('Should revert when passed non-contract address as rewardsVault', async () => {
       await assertRevert(
         votingReward.initialize(
+          rewardsVault.address,
+          NOT_CONTRACT,
+          voting.address,
+          ETH_ADDRESS,
+          EPOCH_BLOCKS,
+          PERCENTAGE_REWARD,
+          LOCK_TIME_BLOCKS,
+          MISSING_VOTES_THRESHOLD
+        ),
+        'VOTING_REWARDS_ADDRESS_NOT_CONTRACT'
+      )
+    })
+
+    it('Should revert when passed non-contract address as voting contract', async () => {
+      await assertRevert(
+        votingReward.initialize(
+          baseVault.address,
           rewardsVault.address,
           NOT_CONTRACT,
           ETH_ADDRESS,
@@ -198,6 +216,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         votingReward.initialize(
           baseVault.address,
           rewardsVault.address,
+          voting.address,
           NOT_CONTRACT,
           EPOCH_BLOCKS,
           PERCENTAGE_REWARD,
@@ -213,6 +232,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         votingReward.initialize(
           baseVault.address,
           rewardsVault.address,
+          voting.address,
           NOT_CONTRACT,
           EPOCH_BLOCKS,
           PERCENTAGE_REWARD,
@@ -228,6 +248,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         votingReward.initialize(
           baseVault.address,
           rewardsVault.address,
+          voting.address,
           NOT_CONTRACT,
           EPOCH_BLOCKS,
           PERCENTAGE_REWARD,
@@ -244,6 +265,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
       await votingReward.initialize(
         baseVault.address,
         rewardsVault.address,
+        voting.address,
         rewardsToken.address,
         EPOCH_BLOCKS,
         PERCENTAGE_REWARD,
@@ -255,11 +277,13 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
     it('Should set correct variables', async () => {
       const actualBaseVault = await votingReward.baseVault()
       const actualRewardVault = await votingReward.rewardsVault()
+      const actualVoting = await votingReward.dandelionVoting()
       const actualRewardToken = await votingReward.rewardsToken()
       const actualEpochDuration = await votingReward.epochDuration()
       const actualLockTime = await votingReward.lockTime()
       const actualMissingVotesThreshold = await votingReward.missingVotesThreshold()
 
+      assert.strictEqual(actualVoting, voting.address)
       assert.strictEqual(actualBaseVault, baseVault.address)
       assert.strictEqual(actualRewardVault, rewardsVault.address)
       assert.strictEqual(actualRewardToken, rewardsToken.address)
@@ -292,14 +316,6 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         acl,
         appManager,
         votingReward.address,
-        CHANGE_VOTING_ROLE,
-        appManager
-      )
-
-      await setPermission(
-        acl,
-        appManager,
-        votingReward.address,
         CHANGE_PERCENTAGE_REWARDS_ROLE,
         appManager
       )
@@ -316,7 +332,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         acl,
         appManager,
         votingReward.address,
-        CHANGE_MISSING_VOTES_THRESHOLD_ROLE,
+        CHANGE_VOTING_ROLE,
         appManager
       )
 
@@ -324,7 +340,15 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         acl,
         appManager,
         votingReward.address,
-        CHANGE_REWARD_TOKEN_ROLE,
+        CHANGE_REWARDS_TOKEN_ROLE,
+        appManager
+      )
+
+      await setPermission(
+        acl,
+        appManager,
+        votingReward.address,
+        CHANGE_MISSING_VOTES_THRESHOLD_ROLE,
         appManager
       )
 
@@ -360,6 +384,17 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
       )
       assert.strictEqual(
         getEventArgument(receipt, 'RewardsVaultChanged', 'rewardsVault'),
+        baseVault.address
+      )
+
+      receipt = await votingReward.changeDandelionVotingContractAddress(
+        baseVault.address,
+        {
+          from: appManager,
+        }
+      )
+      assert.strictEqual(
+        getEventArgument(receipt, 'DandelionVotingChanged', 'dandelionVoting'),
         baseVault.address
       )
 
@@ -546,7 +581,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           acl,
           appManager,
           votingReward.address,
-          DISTRIBUTE_REWARD_ROLE,
+          DISTRIBUTE_REWARDS_ROLE,
           appManager
         )
 
@@ -588,7 +623,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           acl,
           appManager,
           votingReward.address,
-          DISTRIBUTE_REWARD_ROLE,
+          DISTRIBUTE_REWARDS_ROLE,
           appManager
         )
 
