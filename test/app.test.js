@@ -16,6 +16,7 @@ const {
   distributeRewardsTo,
   collectRewardsFor,
 } = require('./helpers/utils')
+const { calculateRewards } = require('./helpers/calculate-reward')
 
 const MiniMeToken = artifacts.require('MiniMeToken')
 const MiniMeTokenFactory = artifacts.require('MiniMeTokenFactory')
@@ -167,14 +168,13 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         votingReward.initialize(
           NOT_CONTRACT,
           rewardsVault.address,
-          voting.address,
           ETH_ADDRESS,
           EPOCH_BLOCKS,
           PERCENTAGE_REWARD,
           LOCK_TIME_BLOCKS,
           MISSING_VOTES_THRESHOLD
         ),
-        'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
+        'VOTING_REWARDS_ADDRESS_NOT_CONTRACT'
       )
     })
 
@@ -183,30 +183,13 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         votingReward.initialize(
           rewardsVault.address,
           NOT_CONTRACT,
-          voting.address,
           ETH_ADDRESS,
           EPOCH_BLOCKS,
           PERCENTAGE_REWARD,
           LOCK_TIME_BLOCKS,
           MISSING_VOTES_THRESHOLD
         ),
-        'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
-      )
-    })
-
-    it('Should revert when passed non-contract address as voting', async () => {
-      await assertRevert(
-        votingReward.initialize(
-          baseVault.address,
-          rewardsVault.address,
-          NOT_CONTRACT,
-          ETH_ADDRESS,
-          EPOCH_BLOCKS,
-          PERCENTAGE_REWARD,
-          LOCK_TIME_BLOCKS,
-          MISSING_VOTES_THRESHOLD
-        ),
-        'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
+        'VOTING_REWARDS_ADDRESS_NOT_CONTRACT'
       )
     })
 
@@ -215,14 +198,13 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         votingReward.initialize(
           baseVault.address,
           rewardsVault.address,
-          voting.address,
           NOT_CONTRACT,
           EPOCH_BLOCKS,
           PERCENTAGE_REWARD,
           LOCK_TIME_BLOCKS,
           MISSING_VOTES_THRESHOLD
         ),
-        'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
+        'VOTING_REWARDS_ADDRESS_NOT_CONTRACT'
       )
     })
 
@@ -231,14 +213,13 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         votingReward.initialize(
           baseVault.address,
           rewardsVault.address,
-          voting.address,
           NOT_CONTRACT,
           EPOCH_BLOCKS,
           PERCENTAGE_REWARD,
           -1,
           MISSING_VOTES_THRESHOLD
         ),
-        'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
+        'VOTING_REWARDS_ADDRESS_NOT_CONTRACT'
       )
     })
 
@@ -247,14 +228,13 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         votingReward.initialize(
           baseVault.address,
           rewardsVault.address,
-          voting.address,
           NOT_CONTRACT,
           EPOCH_BLOCKS,
           PERCENTAGE_REWARD,
           LOCK_TIME_BLOCKS,
           -1
         ),
-        'VOTING_REWARD_ADDRESS_NOT_CONTRACT'
+        'VOTING_REWARDS_ADDRESS_NOT_CONTRACT'
       )
     })
   })
@@ -264,7 +244,6 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
       await votingReward.initialize(
         baseVault.address,
         rewardsVault.address,
-        voting.address,
         rewardsToken.address,
         EPOCH_BLOCKS,
         PERCENTAGE_REWARD,
@@ -274,7 +253,6 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
     })
 
     it('Should set correct variables', async () => {
-      const actualVoting = await votingReward.dandelionVoting()
       const actualBaseVault = await votingReward.baseVault()
       const actualRewardVault = await votingReward.rewardsVault()
       const actualRewardToken = await votingReward.rewardsToken()
@@ -282,7 +260,6 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
       const actualLockTime = await votingReward.lockTime()
       const actualMissingVotesThreshold = await votingReward.missingVotesThreshold()
 
-      assert.strictEqual(actualVoting, voting.address)
       assert.strictEqual(actualBaseVault, baseVault.address)
       assert.strictEqual(actualRewardVault, rewardsVault.address)
       assert.strictEqual(actualRewardToken, rewardsToken.address)
@@ -386,17 +363,6 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         baseVault.address
       )
 
-      receipt = await votingReward.changeDandelionVotingContractAddress(
-        baseVault.address,
-        {
-          from: appManager,
-        }
-      )
-      assert.strictEqual(
-        getEventArgument(receipt, 'DandelionVotingChanged', 'dandelionVoting'),
-        baseVault.address
-      )
-
       receipt = await votingReward.changeLockTime(LOCK_TIME_BLOCKS + 15, {
         from: appManager,
       })
@@ -450,7 +416,6 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
 
       const actualBaseVault = await votingReward.baseVault()
       const actualRewardVault = await votingReward.rewardsVault()
-      const actualVoting = await votingReward.dandelionVoting()
       const actualEpochDuration = parseInt(await votingReward.epochDuration())
       const actualPercentageReward = await votingReward.percentageRewards()
       const actualLockTime = await votingReward.lockTime()
@@ -458,7 +423,6 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
 
       assert.strictEqual(actualBaseVault, rewardsVault.address)
       assert.strictEqual(actualRewardVault, baseVault.address)
-      assert.strictEqual(actualVoting, baseVault.address)
       assert.strictEqual(actualEpochDuration, EPOCH_BLOCKS + ONE_DAY_BLOCKS)
       assert.strictEqual(
         actualPercentageReward.toString(),
@@ -492,15 +456,6 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
     it('Should not be able to set a new Reward Vault because of no permission', async () => {
       await assertRevert(
         votingReward.changeBaseVaultContractAddress(rewardsVault.address, {
-          from: appManager,
-        }),
-        'APP_AUTH_FAILED'
-      )
-    })
-
-    it('Should not be able to set a new Voting because of no permission', async () => {
-      await assertRevert(
-        votingReward.changeDandelionVotingContractAddress(baseVault.address, {
           from: appManager,
         }),
         'APP_AUTH_FAILED'
@@ -547,7 +502,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         votingReward.changePercentageReward('10000000000000000001', {
           from: appManager,
         }),
-        'VOTING_REWARD_PERCENTAGE_REWARD'
+        'VOTING_REWARDS_PERCENTAGE_REWARD'
       )
     })
 
@@ -574,7 +529,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
 
       it('Should fail distributing rewards because of no permission', async () => {
         await assertRevert(
-          distributeRewardsToMany(votingReward, [appManager], appManager),
+          distributeRewardsToMany(votingReward, [appManager], [1], appManager),
           'APP_AUTH_FAILED'
         )
       })
@@ -603,8 +558,8 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         )
 
         await assertRevert(
-          distributeRewardsToMany(votingReward, [appManager], appManager),
-          'VOTING_REWARD_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED'
+          distributeRewardsToMany(votingReward, [appManager], [1], appManager),
+          'VOTING_REWARDS_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED'
         )
       })
     })
@@ -657,14 +612,14 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
       it('Should not be able to collect rewards since there are not', async () => {
         await assertRevert(
           collectRewardsForMany(votingReward, accounts, appManager),
-          'VOTING_REWARD_NO_REWARDS'
+          'VOTING_REWARDS_NO_REWARDS'
         )
       })
 
       it('Should not be able to close distribution since it is not opened', async () => {
         await assertRevert(
           closeRewardsDistributionForCurrentEpoch(votingReward, appManager),
-          'VOTING_REWARD_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED'
+          'VOTING_REWARDS_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED'
         )
       })
 
@@ -689,7 +644,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
             startBlockNumberOfCurrentEpoch - EPOCH_BLOCKS,
             appManager
           ),
-          'VOTING_REWARD_ERROR_EPOCH'
+          'VOTING_REWARDS_ERROR_EPOCH'
         )
       })
 
@@ -717,20 +672,27 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           appManager
         )
 
-        await assertRevert(
-          votingReward.distributeRewardsTo(accounts[0], { from: appManager }),
-          'VOTING_REWARD_TOO_MANY_MISSING_VOTES'
+        const rewards = await calculateRewards(
+          votingReward,
+          voting,
+          miniMeToken,
+          MISSING_VOTES_THRESHOLD,
+          PERCENTAGE_REWARD,
+          accounts
         )
+
+        assert.strictEqual(rewards[0], 0)
       })
 
       it('Should be rewarded respect of the minimun balance in an epoch', async () => {
         const numVotes = 10
 
+        const startBlockNumberOfCurrentEpoch = await now()
         const expectedReward = Math.round(
           ((await miniMeToken.balanceOf(accounts[0])) * PERCENTAGE_REWARD) /
             10 ** 18
         )
-        const startBlockNumberOfCurrentEpoch = await now()
+
         for (let voteId = 1; voteId <= numVotes; voteId++) {
           await newVote(
             voting,
@@ -749,10 +711,27 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           startBlockNumberOfCurrentEpoch,
           appManager
         )
-        await distributeRewardsTo(votingReward, accounts[0], appManager)
-        const rewards = await votingReward.getUnlockedRewardsInfo(accounts[0])
-        assert.strictEqual(rewards.length, 1)
-        assert.strictEqual(parseInt(rewards[0].amount), expectedReward)
+
+        const rewards = await calculateRewards(
+          votingReward,
+          voting,
+          miniMeToken,
+          MISSING_VOTES_THRESHOLD,
+          PERCENTAGE_REWARD,
+          accounts
+        )
+
+        await distributeRewardsTo(
+          votingReward,
+          accounts[0],
+          rewards[0],
+          appManager
+        )
+        const unlockedRewards = await votingReward.getUnlockedRewardsInfo(
+          accounts[0]
+        )
+        assert.strictEqual(unlockedRewards.length, 1)
+        assert.strictEqual(parseInt(unlockedRewards[0].amount), expectedReward)
       })
 
       it('Should be able to collect, distribute rewards for who partecipated actively in voting and catching events', async () => {
@@ -812,7 +791,22 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           startBlockNumberOfCurrentEpoch + EPOCH_BLOCKS
         )
 
-        await distributeRewardsToMany(votingReward, accounts, appManager, 5)
+        const rewards = await calculateRewards(
+          votingReward,
+          voting,
+          miniMeToken,
+          MISSING_VOTES_THRESHOLD,
+          PERCENTAGE_REWARD,
+          accounts
+        )
+
+        await distributeRewardsToMany(
+          votingReward,
+          accounts,
+          rewards,
+          appManager,
+          20
+        )
         receipt = await closeRewardsDistributionForCurrentEpoch(
           votingReward,
           appManager
@@ -885,11 +879,25 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           appManager
         )
 
-        await distributeRewardsToMany(votingReward, accounts, appManager, 5)
+        const rewards = await calculateRewards(
+          votingReward,
+          voting,
+          miniMeToken,
+          MISSING_VOTES_THRESHOLD,
+          PERCENTAGE_REWARD,
+          accounts
+        )
+
+        await distributeRewardsToMany(
+          votingReward,
+          accounts,
+          rewards,
+          appManager
+        )
         await closeRewardsDistributionForCurrentEpoch(votingReward, appManager)
         assertRevert(
           closeRewardsDistributionForCurrentEpoch(votingReward, appManager),
-          'VOTING_REWARD_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED'
+          'VOTING_REWARDS_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED'
         )
       }).timeout(200000)
 
@@ -926,7 +934,22 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           startBlockNumberOfCurrentEpoch,
           appManager
         )
-        await distributeRewardsToMany(votingReward, accounts, appManager, 5)
+
+        const rewards = await calculateRewards(
+          votingReward,
+          voting,
+          miniMeToken,
+          MISSING_VOTES_THRESHOLD,
+          PERCENTAGE_REWARD,
+          accounts
+        )
+
+        await distributeRewardsToMany(
+          votingReward,
+          accounts,
+          rewards,
+          appManager
+        )
         await closeRewardsDistributionForCurrentEpoch(votingReward, appManager)
 
         // base vault must contain all rewards
@@ -949,7 +972,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
 
         await assertRevert(
           collectRewardsForMany(votingReward, accounts, appManager),
-          'VOTING_REWARD_NO_REWARDS'
+          'VOTING_REWARDS_NO_REWARDS'
         )
       }).timeout(200000)
 
@@ -985,7 +1008,22 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           startBlockNumberOfCurrentEpoch,
           appManager
         )
-        await distributeRewardsToMany(votingReward, accounts, appManager, 5)
+
+        let rewards = await calculateRewards(
+          votingReward,
+          voting,
+          miniMeToken,
+          MISSING_VOTES_THRESHOLD,
+          PERCENTAGE_REWARD,
+          accounts
+        )
+
+        await distributeRewardsToMany(
+          votingReward,
+          accounts,
+          rewards,
+          appManager
+        )
         await closeRewardsDistributionForCurrentEpoch(votingReward, appManager)
 
         await mineBlocks(ONE_BLOCK)
@@ -1010,7 +1048,22 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           startBlockNumberOfCurrentEpoch,
           appManager
         )
-        await distributeRewardsToMany(votingReward, accounts, appManager, 5)
+
+        rewards = await calculateRewards(
+          votingReward,
+          voting,
+          miniMeToken,
+          MISSING_VOTES_THRESHOLD,
+          PERCENTAGE_REWARD,
+          accounts
+        )
+
+        await distributeRewardsToMany(
+          votingReward,
+          accounts,
+          rewards,
+          appManager
+        )
         await closeRewardsDistributionForCurrentEpoch(votingReward, appManager)
 
         // base vault must contain all rewards
@@ -1067,7 +1120,22 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           startBlockNumberOfCurrentEpoch,
           appManager
         )
-        await distributeRewardsToMany(votingReward, accounts, appManager)
+
+        const rewards = await calculateRewards(
+          votingReward,
+          voting,
+          miniMeToken,
+          MISSING_VOTES_THRESHOLD,
+          PERCENTAGE_REWARD,
+          accounts
+        )
+
+        await distributeRewardsToMany(
+          votingReward,
+          accounts,
+          rewards,
+          appManager
+        )
 
         await assertRevert(
           openRewardsDistributionForEpoch(
@@ -1075,7 +1143,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
             startBlockNumberOfCurrentEpoch,
             appManager
           ),
-          'VOTING_REWARD_EPOCH_REWARDS_DISTRIBUTION_ALREADY_OPENED'
+          'VOTING_REWARDS_EPOCH_REWARDS_DISTRIBUTION_ALREADY_OPENED'
         )
       }).timeout(50000)
 
@@ -1102,11 +1170,26 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           startBlockNumberOfCurrentEpoch,
           appManager
         )
-        await distributeRewardsToMany(votingReward, accounts, appManager)
+
+        const rewards = await calculateRewards(
+          votingReward,
+          voting,
+          miniMeToken,
+          MISSING_VOTES_THRESHOLD,
+          PERCENTAGE_REWARD,
+          accounts
+        )
+
+        await distributeRewardsToMany(
+          votingReward,
+          accounts,
+          rewards,
+          appManager
+        )
 
         await assertRevert(
-          distributeRewardsToMany(votingReward, accounts, appManager),
-          'VOTING_REWARD_ERROR_EPOCH'
+          distributeRewardsToMany(votingReward, accounts, rewards, appManager),
+          'VOTING_REWARDS_ERROR_EPOCH'
         )
       }).timeout(50000)
 
@@ -1124,7 +1207,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
             await now(),
             appManager
           ),
-          'VOTING_REWARD_ERROR_EPOCH'
+          'VOTING_REWARDS_ERROR_EPOCH'
         )
       }).timeout(20000)
 
@@ -1169,7 +1252,8 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           startBlockNumberOfCurrentEpoch,
           appManager
         )
-        await distributeRewardsTo(votingReward, accounts[0], appManager)
+        // amount not important in this test
+        await distributeRewardsTo(votingReward, accounts[0], 1, appManager)
         await closeRewardsDistributionForCurrentEpoch(votingReward, appManager)
 
         let unlockedRewards = await votingReward.getUnlockedRewardsInfo(
@@ -1217,7 +1301,22 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           startBlockNumberOfCurrentEpoch,
           appManager
         )
-        await distributeRewardsToMany(votingReward, accounts, appManager, 5)
+
+        const rewards = await calculateRewards(
+          votingReward,
+          voting,
+          miniMeToken,
+          MISSING_VOTES_THRESHOLD,
+          PERCENTAGE_REWARD,
+          accounts
+        )
+
+        await distributeRewardsToMany(
+          votingReward,
+          accounts,
+          rewards,
+          appManager
+        )
         await closeRewardsDistributionForCurrentEpoch(votingReward, appManager)
 
         await mineBlocks(ONE_BLOCK)
@@ -1268,7 +1367,22 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           startBlockNumberOfCurrentEpoch,
           appManager
         )
-        await distributeRewardsTo(votingReward, accounts[0], appManager)
+
+        const rewards = await calculateRewards(
+          votingReward,
+          voting,
+          miniMeToken,
+          MISSING_VOTES_THRESHOLD,
+          PERCENTAGE_REWARD,
+          accounts
+        )
+
+        await distributeRewardsTo(
+          votingReward,
+          accounts[0],
+          rewards[0],
+          appManager
+        )
 
         const actualVaultBalance = await rewardsToken.balanceOf(
           rewardsVault.address
@@ -1314,7 +1428,22 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           startBlockNumberOfCurrentEpoch,
           appManager
         )
-        await distributeRewardsToMany(votingReward, accounts, appManager, 5)
+
+        const rewards = await calculateRewards(
+          votingReward,
+          voting,
+          miniMeToken,
+          MISSING_VOTES_THRESHOLD,
+          PERCENTAGE_REWARD,
+          accounts
+        )
+
+        await distributeRewardsToMany(
+          votingReward,
+          accounts,
+          rewards,
+          appManager
+        )
         await closeRewardsDistributionForCurrentEpoch(votingReward, appManager)
 
         await mineBlocks(ONE_BLOCK)
