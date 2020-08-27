@@ -32,7 +32,7 @@
     },
     {
       "name": "Distribute rewards",
-      "id": "DISTRIBUTE_REWARD_ROLE",
+      "id": "DISTRIBUTE_REWARDS_ROLE",
       "params": []
     },
     {
