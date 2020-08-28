@@ -391,7 +391,9 @@ contract VotingRewards is AragonApp {
         uint256 collectedRewards = 0;
         for (uint256 i = 0; i < rewards.length; i++) {
             if (
-                currentBlockNumber - rewards[i].lockBlock > rewards[i].lockTime
+                currentBlockNumber - rewards[i].lockBlock >
+                rewards[i].lockTime &&
+                !_isRewardEmpty(rewards[i])
             ) {
                 rewardsVault.transfer(
                     rewardsToken,
@@ -438,5 +440,20 @@ contract VotingRewards is AragonApp {
         );
 
         return true;
+    }
+
+    /**
+     * @notice Check if a Reward is empty
+     * @param _reward reward
+     */
+    function _isRewardEmpty(Reward memory _reward)
+        internal
+        pure
+        returns (bool)
+    {
+        return
+            _reward.amount == 0 &&
+            _reward.lockBlock == 0 &&
+            _reward.lockTime == 0;
     }
 }
