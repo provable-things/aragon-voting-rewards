@@ -6,11 +6,6 @@
       "params": []
     },
     {
-      "name": "Change epoch duration",
-      "id": "CHANGE_EPOCH_DURATION_ROLE",
-      "params": []
-    },
-    {
       "name": "Change Rewards token",
       "id": "CHANGE_REWARDS_TOKEN_ROLE",
       "params": []
