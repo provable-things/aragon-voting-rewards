@@ -37,7 +37,11 @@ const Rewards = (_props) => {
                 font-weight: bold;
               `}
             >
-              {state === UNLOCKED ? remainder : 'Collectable'}
+              {state === UNLOCKED
+                ? remainder > 0
+                  ? remainder
+                  : 'Collectable'
+                : 'Collected'}
             </TableCell>
           </TableRow>
         )
