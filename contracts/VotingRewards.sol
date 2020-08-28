@@ -44,7 +44,7 @@ contract VotingRewards is AragonApp {
     // prettier-ignore
     string private constant ERROR_EPOCH = "VOTING_REWARDS_ERROR_EPOCH";
     // prettier-ignore
-    string private constant ERROR_PERCENTAGE_REWARD = "VOTING_REWARDS_PERCENTAGE_REWARD";
+    string private constant ERROR_PERCENTAGE_REWARDS = "VOTING_REWARDS_ERROR_PERCENTAGE_REWARDS";
     // prettier-ignore
     string private constant ERROR_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED = "VOTING_REWARDS_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED";
     // prettier-ignore
@@ -75,6 +75,8 @@ contract VotingRewards is AragonApp {
 
     bool public isDistributionOpen;
 
+    // NOTE: previousRewardsDistributionBlockNumber kept even if not used so as not to break the proxy contract storage
+    mapping(address => uint64) private previousRewardsDistributionBlockNumber;
     mapping(address => Reward[]) public addressUnlockedRewards;
     mapping(address => Reward[]) public addressWithdrawnRewards;
 
@@ -119,7 +121,7 @@ contract VotingRewards is AragonApp {
         require(isContract(_rewardsVault), ERROR_ADDRESS_NOT_CONTRACT);
         require(isContract(_dandelionVoting), ERROR_ADDRESS_NOT_CONTRACT);
         require(isContract(_rewardsToken), ERROR_ADDRESS_NOT_CONTRACT);
-        require(_percentageRewards <= PCT_BASE, ERROR_PERCENTAGE_REWARD);
+        require(_percentageRewards <= PCT_BASE, ERROR_PERCENTAGE_REWARDS);
 
         baseVault = Vault(_baseVault);
         rewardsVault = Vault(_rewardsVault);
@@ -321,15 +323,15 @@ contract VotingRewards is AragonApp {
     }
 
     /**
-     * @notice Change percentage reward
+     * @notice Change percentage rewards
      * @param _percentageRewards new percentage
      * @dev PCT_BASE is the maximun allowed percentage
      */
-    function changePercentageReward(uint256 _percentageRewards)
+    function changePercentageRewards(uint256 _percentageRewards)
         external
         auth(CHANGE_PERCENTAGE_REWARDS_ROLE)
     {
-        require(_percentageRewards <= PCT_BASE, ERROR_PERCENTAGE_REWARD);
+        require(_percentageRewards <= PCT_BASE, ERROR_PERCENTAGE_REWARDS);
         percentageRewards = _percentageRewards;
 
         emit PercentageRewardsChanged(percentageRewards);
@@ -421,13 +423,9 @@ contract VotingRewards is AragonApp {
         Reward[] storage unlockedRewards = addressUnlockedRewards[_beneficiary];
 
         uint64 currentBlockNumber = getBlockNumber64();
-        uint64 lastBlockDistributedReward = 0;
-        if (unlockedRewards.length == 0) {
-            lastBlockDistributedReward = deployBlock;
-        } else {
-            // prettier-ignore
-            lastBlockDistributedReward = unlockedRewards[unlockedRewards.length - 1].lockBlock;
-        }
+        uint64 lastBlockDistributedReward = unlockedRewards.length == 0
+            ? deployBlock
+            : unlockedRewards[unlockedRewards.length - 1].lockBlock;
 
         // NOTE: avoid double collecting for the same epoch
         require(
