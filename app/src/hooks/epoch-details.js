@@ -15,6 +15,7 @@ const useEpochDetails = () => {
     rewardsToken,
     settings,
     rewardsTokenBalance,
+    voteDurationBlocks,
   } = useAppState()
 
   return useMemo(() => {
@@ -80,7 +81,8 @@ const useEpochDetails = () => {
         votes,
         epoch.startBlock,
         epoch.startBlock + epoch.durationBlock,
-        epoch.missingVotesThreshold
+        epoch.missingVotesThreshold,
+        voteDurationBlocks
       )
       isElegible = eligibility.isElegible
       votesInEpoch = eligibility.votesInEpoch

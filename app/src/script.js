@@ -105,6 +105,9 @@ function initializeState(_initParams) {
         VotingAbi
       )
       const votingTokenAddress = await votingContract.token().toPromise()
+      const voteDurationBlocks = await votingContract
+        .durationBlocks()
+        .toPromise()
       const votingToken = await getTokenData(votingTokenAddress)
 
       const epoch = await getEpochData()
@@ -124,6 +127,7 @@ function initializeState(_initParams) {
         },
         rewardsToken,
         votingToken,
+        voteDurationBlocks,
         epoch,
       }
     } catch (_err) {
