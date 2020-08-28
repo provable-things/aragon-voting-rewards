@@ -28,7 +28,7 @@ const App = () => {
               <React.Fragment>
                 <Button
                   mode="strong"
-                  label={'Get Rewards'}
+                  label={'Collect all rewards'}
                   onClick={handleClick}
                 />
               </React.Fragment>
