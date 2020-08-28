@@ -75,7 +75,7 @@ contract VotingRewards is AragonApp {
 
     bool public isDistributionOpen;
 
-    // NOTE: previousRewardsDistributionBlockNumber kept even if not used so as not to break the proxy contract storage
+    // NOTE: previousRewardsDistributionBlockNumber kept even if not used so as not to break the proxy contract storage after an upgrade
     mapping(address => uint64) private previousRewardsDistributionBlockNumber;
     mapping(address => Reward[]) public addressUnlockedRewards;
     mapping(address => Reward[]) public addressWithdrawnRewards;
