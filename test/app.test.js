@@ -423,7 +423,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         MISSING_VOTES_THRESHOLD + 1
       )
 
-      receipt = await votingReward.changePercentageReward(
+      receipt = await votingReward.changePercentageRewards(
         '100000000000000000',
         {
           from: appManager,
@@ -499,7 +499,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
 
     it('Should not be able to set a new Percentage Reward because of no permission', async () => {
       await assertRevert(
-        votingReward.changePercentageReward(PERCENTAGE_REWARD, {
+        votingReward.changePercentageRewards(PERCENTAGE_REWARD, {
           from: appManager,
         }),
         'APP_AUTH_FAILED'
@@ -534,10 +534,10 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
       )
 
       await assertRevert(
-        votingReward.changePercentageReward('10000000000000000001', {
+        votingReward.changePercentageRewards('10000000000000000001', {
           from: appManager,
         }),
-        'VOTING_REWARDS_PERCENTAGE_REWARD'
+        'VOTING_REWARDS_ERROR_PERCENTAGE_REWARDS'
       )
     })
 
