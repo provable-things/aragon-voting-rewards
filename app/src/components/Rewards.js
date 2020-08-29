@@ -38,7 +38,7 @@ const Rewards = (_props) => {
               `}
             >
               {state === UNLOCKED
-                ? remainder > 0
+                ? remainder !== '0 seconds'
                   ? remainder
                   : 'Collectable'
                 : 'Collected'}
