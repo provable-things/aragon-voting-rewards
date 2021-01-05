@@ -2,9 +2,7 @@ import React from 'react'
 import { Table, TableHeader, TableRow, TableCell, Text, Tag } from '@aragon/ui'
 import { useAppState } from '@aragon/api-react'
 import NoRewards from './NoRewards'
-import { strip } from '../utils/amount-utils'
 import { UNLOCKED, WITHDRAWN } from '../utils/rewards-utils'
-import { parseSeconds } from '../utils/time-utils'
 import { useRewards } from '../hooks/rewards'
 
 const Rewards = (_props) => {
