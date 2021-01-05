@@ -23,24 +23,13 @@ module.exports = {
     acl = await ACL.at(await dao.acl())
   },
 
-  preInit: async (
-    { proxy, _experimentalAppInstaller, log },
-    { web3, artifacts }
-  ) => {
+  preInit: async ({ proxy, _experimentalAppInstaller, log }, { web3, artifacts }) => {
     const MiniMeToken = artifacts.require('MiniMeToken')
     const MiniMeTokenFactory = artifacts.require('MiniMeTokenFactory')
     const ERC20 = artifacts.require('StandardToken')
 
     const miniMeTokenFactory = await MiniMeTokenFactory.new()
-    miniMeToken = await MiniMeToken.new(
-      miniMeTokenFactory.address,
-      ETH_ADDRESS,
-      0,
-      'DaoToken',
-      18,
-      'DAOT',
-      true
-    )
+    miniMeToken = await MiniMeToken.new(miniMeTokenFactory.address, ETH_ADDRESS, 0, 'DaoToken', 18, 'DAOT', true)
     await miniMeToken.generateTokens(appManager, 10000000)
 
     tokenManager = await _experimentalAppInstaller('token-manager', {
@@ -64,12 +53,7 @@ module.exports = {
       0,
     ])
 
-    rewardToken = await ERC20.new(
-      'Deposit Token',
-      'DPT',
-      MOCK_TOKEN_DECIMALS,
-      MOCK_TOKEN_BALANCE
-    )
+    rewardToken = await ERC20.new('Deposit Token', 'DPT', MOCK_TOKEN_DECIMALS, MOCK_TOKEN_BALANCE)
 
     log(`Base Vault: ${baseVault.address}`)
     log(`Rewards Vault: ${rewardsVault.address}`)
@@ -82,10 +66,7 @@ module.exports = {
   },
 
   postInit: async ({ proxy }, { web3, artifacts }) => {
-    await voting.createPermission(
-      'CREATE_VOTES_ROLE',
-      '0xffffffffffffffffffffffffffffffffffffffff'
-    )
+    await voting.createPermission('CREATE_VOTES_ROLE', '0xffffffffffffffffffffffffffffffffffffffff')
     await tokenManager.createPermission('MINT_ROLE', proxy.address)
     await tokenManager.createPermission('BURN_ROLE', proxy.address)
     await baseVault.createPermission('TRANSFER_ROLE', proxy.address)

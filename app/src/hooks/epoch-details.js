@@ -1,26 +1,15 @@
 import { useMemo } from 'react'
 import { useAppState } from '@aragon/api-react'
-import {
-  findMinimunBalanceInVotesForEpoch,
-  getElegibilityOnEpoch,
-} from '../utils/rewards-utils'
+import { findMinimunBalanceInVotesForEpoch, getElegibilityOnEpoch } from '../utils/rewards-utils'
 import { strip } from '../utils/amount-utils'
 import { parseSeconds } from '../utils/time-utils'
 import BLOCK_TIMES from '../utils/block-times'
 
 const useEpochDetails = () => {
-  const {
-    epoch,
-    votes,
-    votingToken,
-    settings,
-    votingTokenBalance,
-    voteDurationBlocks,
-  } = useAppState()
+  const { epoch, votes, votingToken, settings, votingTokenBalance, voteDurationBlocks } = useAppState()
 
   return useMemo(() => {
-    const current =
-      epoch && (epoch.current || epoch.current === 0) ? epoch.current : '-'
+    const current = epoch && (epoch.current || epoch.current === 0) ? epoch.current : '-'
     const lockTime =
       epoch && (epoch.lockTime || epoch.lockTime === 0)
         ? parseSeconds(epoch.lockTime * BLOCK_TIMES[settings.network.type])
@@ -38,26 +27,18 @@ const useEpochDetails = () => {
 
     const epochTermination =
       epoch && epoch.startBlock && epoch.durationBlock
-        ? new Date(
-            (epoch.startDate +
-              epoch.durationBlock * BLOCK_TIMES[settings.network.type]) *
-              1000
-          ).toLocaleString()
+        ? new Date((epoch.startDate + epoch.durationBlock * BLOCK_TIMES[settings.network.type]) * 1000).toLocaleString()
         : '-'
 
     let epochRemainder, status
     if (epoch && epoch.durationBlock && epoch.startDate) {
       const start = epoch.startDate * 1000
-      const end =
-        (epoch.startDate +
-          epoch.durationBlock * BLOCK_TIMES[settings.network.type]) *
-        1000
+      const end = (epoch.startDate + epoch.durationBlock * BLOCK_TIMES[settings.network.type]) * 1000
 
       const now = new Date().getTime()
 
       epochRemainder = (end - now) / 1000
-      epochRemainder =
-        epochRemainder > 0 ? parseSeconds(epochRemainder) : 'Terminated'
+      epochRemainder = epochRemainder > 0 ? parseSeconds(epochRemainder) : 'Terminated'
 
       status = Math.round(((now - start) / (end - start)) * 100) / 100
     }

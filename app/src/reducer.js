@@ -48,8 +48,7 @@ const reducer = (_state) => {
           current: parseInt(epoch.current),
           startBlock: parseInt(epoch.startBlock),
           lockTime: parseInt(epoch.lockTime),
-          percentageRewards:
-            parseInt(epoch.percentageRewards) / settings.pctBase,
+          percentageRewards: parseInt(epoch.percentageRewards) / settings.pctBase,
           missingVotesThreshold: parseInt(epoch.missingVotesThreshold),
         }
       : null,
@@ -76,10 +75,7 @@ const reducer = (_state) => {
       unlockedRewards && withdrawnRewards
         ? [
             ...unlockedRewards
-              .filter(
-                ({ amount, lockTime, lockBlock }) =>
-                  amount !== '0' && lockTime !== '0' && lockBlock !== '0'
-              )
+              .filter(({ amount, lockTime, lockBlock }) => amount !== '0' && lockTime !== '0' && lockBlock !== '0')
               .map((_reward) => {
                 return {
                   ..._reward,

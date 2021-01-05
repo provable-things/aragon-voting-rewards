@@ -26,22 +26,14 @@ const Rewards = (_props) => {
               <Text>{amountWithSymbol}</Text>
             </TableCell>
             <TableCell>
-              {state === WITHDRAWN ? (
-                <Tag mode="new">WITHDRAWN</Tag>
-              ) : (
-                <Tag mode="identifier">UNLOCKED</Tag>
-              )}
+              {state === WITHDRAWN ? <Tag mode="new">WITHDRAWN</Tag> : <Tag mode="identifier">UNLOCKED</Tag>}
             </TableCell>
             <TableCell
               css={`
                 font-weight: bold;
               `}
             >
-              {state === UNLOCKED
-                ? remainder !== '0 seconds'
-                  ? remainder
-                  : 'Collectable'
-                : 'Collected'}
+              {state === UNLOCKED ? (remainder !== '0 seconds' ? remainder : 'Collectable') : 'Collected'}
             </TableCell>
           </TableRow>
         )

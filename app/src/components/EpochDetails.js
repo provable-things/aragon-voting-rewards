@@ -1,16 +1,6 @@
 import React, { Fragment } from 'react'
 import { useAppState } from '@aragon/api-react'
-import {
-  Box,
-  ProgressBar,
-  useTheme,
-  GU,
-  IconCheck,
-  IconClock,
-  IconClose,
-  Tag,
-  Help,
-} from '@aragon/ui'
+import { Box, ProgressBar, useTheme, GU, IconCheck, IconClock, IconClose, Tag, Help } from '@aragon/ui'
 import styled from 'styled-components'
 import { useEpochDetails } from '../hooks/epoch-details'
 import BLOCK_TIMES from '../utils/block-times'
@@ -65,16 +55,9 @@ const EpochDetails = (_props) => {
             `}
           >
             <Help hint="Why is this an estimated time?">
-              Rewards are determined by vote's blocks which occur approximately
-              every{' '}
-              <strong>
-                {settings ? BLOCK_TIMES[settings.network.type] : '-'}
-              </strong>{' '}
-              seconds. The epoch will terminate at block{' '}
-              <strong>
-                {epoch ? epoch.startBlock + epoch.durationBlock : '-'}
-              </strong>
-              .
+              Rewards are determined by vote's blocks which occur approximately every{' '}
+              <strong>{settings ? BLOCK_TIMES[settings.network.type] : '-'}</strong> seconds. The epoch will terminate
+              at block <strong>{epoch ? epoch.startBlock + epoch.durationBlock : '-'}</strong>.
             </Help>
           </span>
         </div>

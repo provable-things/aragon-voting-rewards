@@ -14,16 +14,12 @@ const useRewards = () => {
     return rewards.map((_reward) => {
       const { amount, state, lockDate, lockTime } = _reward
 
-      const remainder =
-        lockDate + lockTime * BLOCK_TIMES[settings.network.type] - now
+      const remainder = lockDate + lockTime * BLOCK_TIMES[settings.network.type] - now
 
       return {
         ..._reward,
-        amountWithSymbol: `${strip(
-          offChainFormat(amount, rewardsToken.decimals).toString()
-        )} ${rewardsToken.symbol}`,
-        remainder:
-          state === UNLOCKED && remainder > 0 ? parseSeconds(remainder) : 0,
+        amountWithSymbol: `${strip(offChainFormat(amount, rewardsToken.decimals).toString())} ${rewardsToken.symbol}`,
+        remainder: state === UNLOCKED && remainder > 0 ? parseSeconds(remainder) : 0,
       }
     })
   }, [rewards])

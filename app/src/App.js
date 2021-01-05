@@ -26,11 +26,7 @@ const App = () => {
             primary="Voting Rewards"
             secondary={
               <React.Fragment>
-                <Button
-                  mode="strong"
-                  label={'Collect all rewards'}
-                  onClick={handleClick}
-                />
+                <Button mode="strong" label={'Collect all rewards'} onClick={handleClick} />
               </React.Fragment>
             }
           />

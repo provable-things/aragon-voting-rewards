@@ -11,21 +11,14 @@ const calculateReward = async (
   _percentageRewards
 ) => {
   let missingVotes = 0
-  let minimumBalance = parseInt(
-    await _votingToken.balanceOfAt(_beneficiary, _toBlock)
-  )
+  let minimumBalance = parseInt(await _votingToken.balanceOfAt(_beneficiary, _toBlock))
 
   for (let voteId = await _voting.votesLength(); voteId >= 1; voteId--) {
     const vote = await _voting.getVote(voteId)
     const startBlock = parseInt(vote.startBlock)
 
-    if (
-      startBlock + _voteDurationBlocks >= _fromBlock &&
-      startBlock + _voteDurationBlocks <= _toBlock
-    ) {
-      const votingTokenBalanceAtVote = parseInt(
-        await _votingToken.balanceOfAt(_beneficiary, startBlock)
-      )
+    if (startBlock + _voteDurationBlocks >= _fromBlock && startBlock + _voteDurationBlocks <= _toBlock) {
+      const votingTokenBalanceAtVote = parseInt(await _votingToken.balanceOfAt(_beneficiary, startBlock))
       if (votingTokenBalanceAtVote === 0) {
         return 0
       }
@@ -45,9 +38,7 @@ const calculateReward = async (
     if (startBlock < _fromBlock) break
   }
 
-  return minimumBalance > 0
-    ? Math.round((minimumBalance * _percentageRewards) / PCT_BASE)
-    : minimumBalance
+  return minimumBalance > 0 ? Math.round((minimumBalance * _percentageRewards) / PCT_BASE) : minimumBalance
 }
 
 const calculateRewards = async (
@@ -58,9 +49,7 @@ const calculateRewards = async (
   _percentageRewards,
   _accounts
 ) => {
-  const epochStartAt = parseInt(
-    await _votingReward.startBlockNumberOfCurrentEpoch()
-  )
+  const epochStartAt = parseInt(await _votingReward.startBlockNumberOfCurrentEpoch())
   const epochDuration = parseInt(await _votingReward.epochDuration())
   const voteDurationBlocks = parseInt(await _voting.durationBlocks())
 
