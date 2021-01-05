@@ -12,9 +12,9 @@ const useEpochDetails = () => {
   const {
     epoch,
     votes,
-    rewardsToken,
+    votingToken,
     settings,
-    rewardsTokenBalance,
+    votingTokenBalance,
     voteDurationBlocks,
   } = useAppState()
 
@@ -68,8 +68,8 @@ const useEpochDetails = () => {
         votes,
         epoch.startBlock,
         epoch.startBlock + epoch.durationBlock,
-        rewardsToken.decimals,
-        rewardsTokenBalance
+        votingToken.decimals,
+        votingTokenBalance
       )
 
       if (minimum || minimum === 0) {

@@ -174,6 +174,11 @@ const handleAccountChange = async (_nextState, { account }) => {
           rewardsToken.decimals,
           account
         ),
+        votingTokenBalance: await getTokenBalance(
+          votingToken.address,
+          votingToken.decimals,
+          account
+        ),
       }
     }
 

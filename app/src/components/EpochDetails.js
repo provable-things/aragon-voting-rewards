@@ -80,7 +80,7 @@ const EpochDetails = (_props) => {
         </div>
       </Detail>
       <Detail>
-        <DetailText>Partecipating with:</DetailText>
+        <DetailText>Participating with:</DetailText>
         <DetailValue>
           {partecipateWith}
           <TokenSymbol

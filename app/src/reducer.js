@@ -24,6 +24,7 @@ const reducer = (_state) => {
   const {
     votes,
     rewardsTokenBalance,
+    votingTokenBalance,
     epoch,
     unlockedRewards,
     withdrawnRewards,
@@ -38,6 +39,7 @@ const reducer = (_state) => {
       pctBase: parseInt(settings.pctBase),
     },
     rewardsTokenBalance: new BigNumber(rewardsTokenBalance),
+    votingTokenBalance: new BigNumber(votingTokenBalance),
     voteDurationBlocks: parseInt(voteDurationBlocks),
     epoch: epoch
       ? {
