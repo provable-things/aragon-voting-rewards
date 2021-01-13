@@ -12,12 +12,7 @@ const vote = (_voting, _voteId, _from) =>
     from: _from,
   })
 
-const distributeRewardsToMany = async (
-  _votingReward,
-  _beneficiaries,
-  _appManager,
-  _interval = 10
-) => {
+const distributeRewardsToMany = async (_votingReward, _beneficiaries, _amounts, _appManager, _interval = 20) => {
   const chunksLength = Math.floor(_beneficiaries.length / _interval)
   const remainder = _beneficiaries.length % _interval
 
@@ -25,20 +20,15 @@ const distributeRewardsToMany = async (
     const from = chunk * _interval
     const to = chunk * _interval + _interval
 
-    await _votingReward.distributeRewardsToMany(
-      _beneficiaries.slice(from, to),
-      {
-        from: _appManager,
-        gas: 9500000,
-      }
-    )
+    await _votingReward.distributeRewardsToMany(_beneficiaries.slice(from, to), _amounts.slice(from, to), {
+      from: _appManager,
+      gas: 9500000,
+    })
   }
 
   await _votingReward.distributeRewardsToMany(
-    _beneficiaries.slice(
-      _beneficiaries.length - remainder,
-      _beneficiaries.length
-    ),
+    _beneficiaries.slice(_beneficiaries.length - remainder, _beneficiaries.length),
+    _amounts.slice(_amounts.length - remainder, _amounts.length),
     {
       from: _appManager,
       gas: 9500000,
@@ -46,12 +36,7 @@ const distributeRewardsToMany = async (
   )
 }
 
-const collectRewardsForMany = async (
-  _votingReward,
-  _beneficiaries,
-  _appManager,
-  _interval = 10
-) => {
+const collectRewardsForMany = async (_votingReward, _beneficiaries, _appManager, _interval = 10) => {
   const chunksLength = Math.floor(_beneficiaries.length / _interval)
   const remainder = _beneficiaries.length % _interval
 
@@ -66,10 +51,7 @@ const collectRewardsForMany = async (
   }
 
   await _votingReward.collectRewardsForMany(
-    _beneficiaries.slice(
-      _beneficiaries.length - remainder,
-      _beneficiaries.length
-    ),
+    _beneficiaries.slice(_beneficiaries.length - remainder, _beneficiaries.length),
     {
       from: _appManager,
       gas: 9500000,
@@ -77,8 +59,8 @@ const collectRewardsForMany = async (
   )
 }
 
-const distributeRewardsTo = (_votingReward, _beneficiary, _appManager) =>
-  _votingReward.distributeRewardsTo(_beneficiary, {
+const distributeRewardsTo = (_votingReward, _beneficiary, _reward, _appManager) =>
+  _votingReward.distributeRewardsTo(_beneficiary, _reward, {
     from: _appManager,
   })
 
@@ -87,11 +69,7 @@ const collectRewardsFor = (_votingReward, _beneficiary, _appManager) =>
     from: _appManager,
   })
 
-const openRewardsDistributionForEpoch = (
-  _votingReward,
-  _startFrom,
-  _appManager
-) =>
+const openRewardsDistributionForEpoch = (_votingReward, _startFrom, _appManager) =>
   _votingReward.openRewardsDistributionForEpoch(_startFrom, {
     from: _appManager,
   })
@@ -109,17 +87,10 @@ const getAccountsBalance = async (_accounts, _token) => {
   return balances
 }
 
-const getTotalReward = async (
-  _accounts,
-  _token,
-  _percentageReward,
-  _base = 10 ** 18
-) => {
+const getTotalReward = async (_accounts, _token, _percentageReward, _base = 10 ** 18) => {
   let total = 0
   for (let account of _accounts) {
-    total += Math.round(
-      ((await _token.balanceOf(account)) * _percentageReward) / _base
-    )
+    total += Math.round(((await _token.balanceOf(account)) * _percentageReward) / _base)
   }
   return total
 }

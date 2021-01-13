@@ -6,7 +6,12 @@
       "params": []
     },
     {
-      "name": "Change vault",
+      "name": "Change Rewards token",
+      "id": "CHANGE_REWARDS_TOKEN_ROLE",
+      "params": []
+    },
+    {
+      "name": "Change Vault",
       "id": "CHANGE_VAULT_ROLE",
       "params": []
     },
@@ -32,7 +37,7 @@
     },
     {
       "name": "Distribute rewards",
-      "id": "DISTRIBUTE_REWARD_ROLE",
+      "id": "DISTRIBUTE_REWARDS_ROLE",
       "params": []
     },
     {

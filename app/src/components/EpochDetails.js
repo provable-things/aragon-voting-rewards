@@ -1,18 +1,9 @@
 import React, { Fragment } from 'react'
 import { useAppState } from '@aragon/api-react'
-import {
-  Box,
-  ProgressBar,
-  useTheme,
-  GU,
-  IconCheck,
-  IconClock,
-  IconClose,
-  Tag,
-  Help,
-} from '@aragon/ui'
+import { Box, ProgressBar, useTheme, GU, IconCheck, IconClock, IconClose, Tag, Help } from '@aragon/ui'
 import styled from 'styled-components'
 import { useEpochDetails } from '../hooks/epoch-details'
+import BLOCK_TIMES from '../utils/block-times'
 
 const EpochDetails = (_props) => {
   const { rewardsToken, account, settings, epoch } = useAppState()
@@ -22,7 +13,7 @@ const EpochDetails = (_props) => {
   const {
     current,
     lockTime,
-    duration,
+    durationBlock,
     percentageRewards,
     epochTermination,
     epochRemainder,
@@ -45,7 +36,7 @@ const EpochDetails = (_props) => {
       </Detail>
       <Detail>
         <DetailText>Duration:</DetailText>
-        <DetailValue>{duration}</DetailValue>
+        <DetailValue>{durationBlock}</DetailValue>
       </Detail>
       <Detail>
         <DetailText>End date:</DetailText>
@@ -64,19 +55,15 @@ const EpochDetails = (_props) => {
             `}
           >
             <Help hint="Why is this an estimated time?">
-              Rewards are determined by vote's blocks which occur approximately
-              every <strong>{settings ? settings.blockTime : '-'}</strong>{' '}
-              seconds. The epoch will terminate at block{' '}
-              <strong>
-                {epoch ? epoch.startBlock + epoch.durationBlock : '-'}
-              </strong>
-              .
+              Rewards are determined by vote's blocks which occur approximately every{' '}
+              <strong>{settings ? BLOCK_TIMES[settings.network.type] : '-'}</strong> seconds. The epoch will terminate
+              at block <strong>{epoch ? epoch.startBlock + epoch.durationBlock : '-'}</strong>.
             </Help>
           </span>
         </div>
       </Detail>
       <Detail>
-        <DetailText>Partecipating with:</DetailText>
+        <DetailText>Participating with:</DetailText>
         <DetailValue>
           {partecipateWith}
           <TokenSymbol

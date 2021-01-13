@@ -9,10 +9,7 @@ import { first } from 'rxjs/operators'
 
 const app = new Aragon()
 
-const retryEvery = async (
-  callback,
-  { initialRetryTimer = 1000, increaseFactor = 3, maxRetries = 3 } = {}
-) => {
+const retryEvery = async (callback, { initialRetryTimer = 1000, increaseFactor = 3, maxRetries = 3 } = {}) => {
   const sleep = (time) => new Promise((resolve) => setTimeout(resolve, time))
 
   let retryNum = 0
@@ -26,9 +23,7 @@ const retryEvery = async (
       ++retryNum
 
       const nextRetryTime = retryTimer * increaseFactor
-      console.log(
-        `Retrying in ${nextRetryTime}s... (attempt ${retryNum} of ${maxRetries})`
-      )
+      console.log(`Retrying in ${nextRetryTime}s... (attempt ${retryNum} of ${maxRetries})`)
       await sleep(nextRetryTime)
       return attempt(nextRetryTime)
     }
@@ -100,15 +95,16 @@ function initializeState(_initParams) {
       const rewardsTokenAddress = await app.call('rewardsToken').toPromise()
       const rewardsToken = await getTokenData(rewardsTokenAddress)
 
-      const votingContract = app.external(
-        _initParams.dandelionVotingAddress,
-        VotingAbi
-      )
+      const votingContract = app.external(_initParams.dandelionVotingAddress, VotingAbi)
       const votingTokenAddress = await votingContract.token().toPromise()
+      const voteDurationBlocks = await votingContract.durationBlocks().toPromise()
       const votingToken = await getTokenData(votingTokenAddress)
 
       const epoch = await getEpochData()
       const pctBase = await app.call('PCT_BASE').toPromise()
+
+      const currentBlock = await getCurrentBlockNumber()
+      const currentTimestampBlock = await getBlockTimestamp('latest')
 
       return {
         ..._initParams,
@@ -116,9 +112,12 @@ function initializeState(_initParams) {
         settings: {
           ...settings,
           pctBase,
+          currentBlock,
+          currentTimestampBlock,
         },
         rewardsToken,
         votingToken,
+        voteDurationBlocks,
         epoch,
       }
     } catch (_err) {
@@ -133,8 +132,8 @@ const handleEvent = async (_nextState) => {
     if (_nextState.account) {
       return {
         ..._nextState,
-        unlockedRewards: await getUnlockedRewardsInfo(account),
-        withdrawnRewards: await getWithdrawnRewardsInfo(account),
+        unlockedRewards: await getUnlockedRewardsInfo(_nextState.account),
+        withdrawnRewards: await getWithdrawnRewardsInfo(_nextState.account),
       }
     }
 
@@ -148,16 +147,16 @@ const handleEvent = async (_nextState) => {
 const handleAccountChange = async (_nextState, { account }) => {
   try {
     if (account) {
+      const { dandelionVotingAddress, votingToken, rewardsToken } = _nextState
+
       return {
         ..._nextState,
         account,
-        votes: await getVotes(
-          _nextState.dandelionVotingAddress,
-          _nextState.votingToken.address,
-          account
-        ),
+        votes: await getVotes(dandelionVotingAddress, votingToken.address, account),
         unlockedRewards: await getUnlockedRewardsInfo(account),
         withdrawnRewards: await getWithdrawnRewardsInfo(account),
+        rewardsTokenBalance: await getTokenBalance(rewardsToken.address, rewardsToken.decimals, account),
+        votingTokenBalance: await getTokenBalance(votingToken.address, votingToken.decimals, account),
       }
     }
 
@@ -191,26 +190,22 @@ const getTokenData = async (_tokenAddress) => {
 const getEpochData = async () => {
   try {
     // a new epoch starts when the rewards of the last epoch ends
-    const lastRewardsDistributionBlock = await app
-      .call('lastRewardsDistributionBlock')
-      .toPromise()
+    const lastRewardsDistributionBlock = await app.call('lastRewardsDistributionBlock').toPromise()
 
     return {
       startBlock: lastRewardsDistributionBlock,
       startDate: await getBlockTimestamp(lastRewardsDistributionBlock),
-      duration: await app.call('epochDuration').toPromise(),
+      durationBlock: await app.call('epochDuration').toPromise(),
       current: await app.call('currentEpoch').toPromise(),
       lockTime: await app.call('lockTime').toPromise(),
       percentageRewards: await app.call('percentageRewards').toPromise(),
-      missingVotesThreshold: await app
-        .call('missingVotesThreshold')
-        .toPromise(),
+      missingVotesThreshold: await app.call('missingVotesThreshold').toPromise(),
     }
   } catch (_err) {
     console.error(`Failed to load epoch data: ${_err.message}`)
     return {
       startBlock: null,
-      duration: null,
+      durationBlock: null,
       current: null,
       lockTime: null,
     }
@@ -219,15 +214,13 @@ const getEpochData = async () => {
 
 const getUnlockedRewardsInfo = async (_receiver) => {
   try {
-    const rewards = await app
-      .call('getUnlockedRewardsInfo', _receiver)
-      .toPromise()
-    return rewards.map(async (_reward) => {
-      return {
-        ..._reward,
-        lockDate: await getBlockTimestamp(_reward.lockBlock),
-      }
-    })
+    const rewards = await app.call('getUnlockedRewardsInfo', _receiver).toPromise()
+
+    for (let reward of rewards) {
+      reward.lockDate = await getBlockTimestamp(reward.lockBlock)
+    }
+
+    return rewards
   } catch (_err) {
     console.error(`Failed to load rewards: ${_err.message}`)
     return []
@@ -236,42 +229,25 @@ const getUnlockedRewardsInfo = async (_receiver) => {
 
 const getWithdrawnRewardsInfo = async (_receiver) => {
   try {
-    const rewards = await app
-      .call('getWithdrawnRewardsInfo', _receiver)
-      .toPromise()
-    return rewards.map(async (_reward) => {
-      return {
-        ..._reward,
-        lockDate: await getBlockTimestamp(_reward.lockBlock),
-      }
-    })
+    const rewards = await app.call('getWithdrawnRewardsInfo', _receiver).toPromise()
+
+    for (let reward of rewards) {
+      reward.lockDate = await getBlockTimestamp(reward.lockBlock)
+    }
+
+    return rewards
   } catch (_err) {
     console.error(`Failed to load rewards: ${_err.message}`)
     return []
   }
 }
 
-const getVotes = async (
-  _votingContractAddress,
-  _votingTokenAddress,
-  _account
-) => {
+const getVotes = async (_votingContractAddress, _votingTokenAddress, _account) => {
   try {
     const votingContract = app.external(_votingContractAddress, VotingAbi)
     const votes = []
-    for (
-      let voteId = 1;
-      voteId <= (await votingContract.votesLength().toPromise());
-      voteId++
-    ) {
-      votes.push(
-        await getVote(
-          _account,
-          voteId,
-          _votingContractAddress,
-          _votingTokenAddress
-        )
-      )
+    for (let voteId = 1; voteId <= (await votingContract.votesLength().toPromise()); voteId++) {
+      votes.push(await getVote(_account, voteId, _votingContractAddress, _votingTokenAddress))
     }
     return votes
   } catch (_err) {
@@ -280,27 +256,15 @@ const getVotes = async (
   }
 }
 
-const getVote = async (
-  _account,
-  _voteId,
-  _votingContractAddress,
-  _votingTokenAddress
-) => {
+const getVote = async (_account, _voteId, _votingContractAddress, _votingTokenAddress) => {
   try {
     const votingContract = app.external(_votingContractAddress, VotingAbi)
 
     const vote = await votingContract.getVote(_voteId).toPromise()
-    const state = await votingContract
-      .getVoterState(_voteId, _account)
-      .toPromise()
+    const state = await votingContract.getVoterState(_voteId, _account).toPromise()
 
-    const votingTokenContract = app.external(
-      _votingTokenAddress,
-      MinimeTokenAbi
-    )
-    const balance = await votingTokenContract
-      .balanceOfAt(_account, vote.startBlock)
-      .toPromise()
+    const votingTokenContract = app.external(_votingTokenAddress, MinimeTokenAbi)
+    const balance = await votingTokenContract.balanceOfAt(_account, vote.startBlock).toPromise()
 
     return {
       ...vote,
@@ -315,12 +279,30 @@ const getVote = async (
 
 const getBlockTimestamp = async (_blockNumber) => {
   try {
-    const { timestamp } = await app
-      .web3Eth('getBlock', _blockNumber)
-      .toPromise()
+    const { timestamp } = await app.web3Eth('getBlock', _blockNumber).toPromise()
     return timestamp
   } catch (_err) {
     console.error(`Failed to load block timestamp: ${_err.message}`)
     throw new Error(_err)
+  }
+}
+
+const getCurrentBlockNumber = async () => {
+  try {
+    const { number } = await app.web3Eth('getBlock', 'latest').toPromise()
+    return number
+  } catch (_err) {
+    console.error(`Failed to load block number: ${_err.message}`)
+    throw new Error(_err)
+  }
+}
+
+const getTokenBalance = (_tokenAddress, _tokenDecimals, _address) => {
+  try {
+    const token = app.external(_tokenAddress, ERC20Abi)
+    return token.balanceOf(_address).toPromise()
+  } catch (_err) {
+    console.error(`Failed to load token balance: ${_err.message}`)
+    throw new Error(_err.message)
   }
 }
