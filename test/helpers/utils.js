@@ -16,17 +16,23 @@ const distributeRewardsToMany = async (_votingReward, _beneficiaries, _amounts, 
   const chunksLength = Math.floor(_beneficiaries.length / _interval)
   const remainder = _beneficiaries.length % _interval
 
+  const allLogs = []
   for (let chunk = 0; chunk < chunksLength; chunk++) {
     const from = chunk * _interval
     const to = chunk * _interval + _interval
 
-    await _votingReward.distributeRewardsToMany(_beneficiaries.slice(from, to), _amounts.slice(from, to), {
+    const {
+      receipt: { logs },
+    } = await _votingReward.distributeRewardsToMany(_beneficiaries.slice(from, to), _amounts.slice(from, to), {
       from: _appManager,
       gas: 9500000,
     })
+    allLogs.push(...logs)
   }
 
-  await _votingReward.distributeRewardsToMany(
+  const {
+    receipt: { logs },
+  } = await _votingReward.distributeRewardsToMany(
     _beneficiaries.slice(_beneficiaries.length - remainder, _beneficiaries.length),
     _amounts.slice(_amounts.length - remainder, _amounts.length),
     {
@@ -34,6 +40,11 @@ const distributeRewardsToMany = async (_votingReward, _beneficiaries, _amounts, 
       gas: 9500000,
     }
   )
+  allLogs.push(...logs)
+
+  return allLogs
+    .filter(({ event }) => event === 'RewardDistributed')
+    .map(({ args, blockNumber }) => ({ ...args, lockBlock: blockNumber }))
 }
 
 const collectRewardsForMany = async (_votingReward, _beneficiaries, _appManager, _interval = 10) => {
@@ -59,10 +70,40 @@ const collectRewardsForMany = async (_votingReward, _beneficiaries, _appManager,
   )
 }
 
-const distributeRewardsTo = (_votingReward, _beneficiary, _reward, _appManager) =>
-  _votingReward.distributeRewardsTo(_beneficiary, _reward, {
+const semiTrustedCollectRewardsForMany = async (
+  _distributions,
+  _currentBlock,
+  _lockTime,
+  _rewardsVault,
+  _rewardsToken,
+  _appManager
+) => {
+  const collectedRewards = _distributions.filter(
+    ({ lockBlock, lockTime }) => parseInt(_currentBlock) - parseInt(lockBlock) > parseInt(lockTime)
+  )
+  await Promise.all(
+    collectedRewards.map(
+      ({ beneficiary, amount }) =>
+        new Promise((_resolve) => {
+          _rewardsVault.transfer(_rewardsToken, beneficiary, amount).then(_resolve)
+        })
+    )
+  )
+
+  return collectedRewards
+}
+
+const distributeRewardsTo = async (_votingReward, _beneficiary, _reward, _appManager) => {
+  const {
+    receipt: { logs },
+  } = await _votingReward.distributeRewardsTo(_beneficiary, _reward, {
     from: _appManager,
   })
+
+  return logs
+    .filter(({ event }) => event === 'RewardDistributed')
+    .map(({ args, blockNumber }) => ({ ...args, lockBlock: blockNumber }))
+}
 
 const collectRewardsFor = (_votingReward, _beneficiary, _appManager) =>
   _votingReward.collectRewardsFor(_beneficiary, {
@@ -107,4 +148,5 @@ module.exports = {
   distributeRewardsToMany,
   distributeRewardsTo,
   collectRewardsFor,
+  semiTrustedCollectRewardsForMany,
 }

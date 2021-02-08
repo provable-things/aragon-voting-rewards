@@ -161,7 +161,8 @@ contract VotingRewards is AragonApp {
 
         uint256 totalRewardAmount = 0;
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
-            _assignUnlockedReward(_beneficiaries[i], _amount[i]);
+            // NOTE: switching to a semi-trusted solution in order to spend less in gas
+            // _assignUnlockedReward(_beneficiaries[i], _amount[i]);
             totalRewardAmount = totalRewardAmount.add(_amount[i]);
             emit RewardDistributed(_beneficiaries[i], _amount[i], lockTime);
         }
@@ -181,8 +182,8 @@ contract VotingRewards is AragonApp {
         returns (bool)
     {
         require(isDistributionOpen, ERROR_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED);
-
-        _assignUnlockedReward(_beneficiary, _amount);
+        // NOTE: switching to a semi-trusted solution in order to spend less in gas
+        // _assignUnlockedReward(_beneficiary, _amount);
         baseVault.transfer(rewardsToken, rewardsVault, _amount);
 
         emit RewardDistributed(_beneficiary, _amount, lockTime);
@@ -334,7 +335,7 @@ contract VotingRewards is AragonApp {
      */
     function _assignUnlockedReward(address _beneficiary, uint256 _amount) internal returns (bool) {
         Reward[] storage unlockedRewards = addressUnlockedRewards[_beneficiary];
-        
+
         uint64 currentBlockNumber = getBlockNumber64();
         // prettier-ignore
         uint64 lastBlockDistributedReward = unlockedRewards.length == 0 ? deployBlock : unlockedRewards[unlockedRewards.length - 1].lockBlock;
