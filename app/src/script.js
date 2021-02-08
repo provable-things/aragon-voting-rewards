@@ -2,7 +2,6 @@ import 'core-js/stable'
 import 'regenerator-runtime/runtime'
 import Aragon, { events } from '@aragon/api'
 import ERC20Abi from './abi/ERC20.json'
-import VaultAbi from './abi/Vault.json'
 import VotingAbi from './abi/Voting.json'
 import MinimeTokenAbi from './abi/MinimeToken.json'
 import { first } from 'rxjs/operators'
@@ -96,15 +95,19 @@ function initializeState(_initParams) {
       const rewardsToken = await getTokenData(rewardsTokenAddress)
 
       const votingContract = app.external(_initParams.dandelionVotingAddress, VotingAbi)
-      const votingTokenAddress = await votingContract.token().toPromise()
-      const voteDurationBlocks = await votingContract.durationBlocks().toPromise()
+      const [votingTokenAddress, voteDurationBlocks] = await Promise.all([
+        votingContract.token().toPromise(),
+        votingContract.durationBlocks().toPromise()
+      ])
+      
       const votingToken = await getTokenData(votingTokenAddress)
 
-      const epoch = await getEpochData()
-      const pctBase = await app.call('PCT_BASE').toPromise()
-
-      const currentBlock = await getCurrentBlockNumber()
-      const currentTimestampBlock = await getBlockTimestamp('latest')
+      const [epoch, pctBase, currentBlock, currentTimestampBlock] = await Promise.all([
+        getEpochData(),
+        app.call('PCT_BASE').toPromise(),
+        getCurrentBlockNumber(),
+        getBlockTimestamp('latest')
+      ])
 
       return {
         ..._initParams,
@@ -130,10 +133,15 @@ function initializeState(_initParams) {
 const handleEvent = async (_nextState) => {
   try {
     if (_nextState.account) {
+      const [unlockedRewards, withdrawnRewards] = await Promise.all([
+        getUnlockedRewardsInfo(_nextState.account),
+        getWithdrawnRewardsInfo(_nextState.account)
+      ])
+
       return {
         ..._nextState,
-        unlockedRewards: await getUnlockedRewardsInfo(_nextState.account),
-        withdrawnRewards: await getWithdrawnRewardsInfo(_nextState.account),
+        unlockedRewards,
+        withdrawnRewards,
       }
     }
 
@@ -149,14 +157,22 @@ const handleAccountChange = async (_nextState, { account }) => {
     if (account) {
       const { dandelionVotingAddress, votingToken, rewardsToken } = _nextState
 
+      const [votes, unlockedRewards, withdrawnRewards, rewardsTokenBalance, votingTokenBalance] = await Promise.all([
+        getVotes(dandelionVotingAddress, votingToken.address, account),
+        getUnlockedRewardsInfo(account),
+        getWithdrawnRewardsInfo(account),
+        getTokenBalance(rewardsToken.address, rewardsToken.decimals, account),
+        getTokenBalance(votingToken.address, votingToken.decimals, account),
+      ])
+
       return {
         ..._nextState,
         account,
-        votes: await getVotes(dandelionVotingAddress, votingToken.address, account),
-        unlockedRewards: await getUnlockedRewardsInfo(account),
-        withdrawnRewards: await getWithdrawnRewardsInfo(account),
-        rewardsTokenBalance: await getTokenBalance(rewardsToken.address, rewardsToken.decimals, account),
-        votingTokenBalance: await getTokenBalance(votingToken.address, votingToken.decimals, account),
+        votes,
+        unlockedRewards,
+        withdrawnRewards,
+        rewardsTokenBalance,
+        votingTokenBalance,
       }
     }
 
@@ -170,9 +186,11 @@ const handleAccountChange = async (_nextState, { account }) => {
 const getTokenData = async (_tokenAddress) => {
   try {
     const token = app.external(_tokenAddress, ERC20Abi)
-    const decimals = await token.decimals().toPromise()
-    const name = await token.name().toPromise()
-    const symbol = await token.symbol().toPromise()
+    const [decimals, name, symbol] = await Promise.all([
+      token.decimals().toPromise(),
+      token.name().toPromise(),
+      token.symbol().toPromise(),
+    ])
 
     return {
       decimals,
@@ -192,14 +210,23 @@ const getEpochData = async () => {
     // a new epoch starts when the rewards of the last epoch ends
     const lastRewardsDistributionBlock = await app.call('lastRewardsDistributionBlock').toPromise()
 
+    const [startDate, durationBlock, current, lockTime, percentageRewards, missingVotesThreshold] = await Promise.all([
+      getBlockTimestamp(lastRewardsDistributionBlock),
+      app.call('epochDuration').toPromise(),
+      app.call('currentEpoch').toPromise(),
+      app.call('lockTime').toPromise(),
+      app.call('percentageRewards').toPromise(),
+      app.call('missingVotesThreshold').toPromise(),
+    ])
+
     return {
       startBlock: lastRewardsDistributionBlock,
-      startDate: await getBlockTimestamp(lastRewardsDistributionBlock),
-      durationBlock: await app.call('epochDuration').toPromise(),
-      current: await app.call('currentEpoch').toPromise(),
-      lockTime: await app.call('lockTime').toPromise(),
-      percentageRewards: await app.call('percentageRewards').toPromise(),
-      missingVotesThreshold: await app.call('missingVotesThreshold').toPromise(),
+      startDate,
+      durationBlock,
+      current,
+      lockTime,
+      percentageRewards,
+      missingVotesThreshold,
     }
   } catch (_err) {
     console.error(`Failed to load epoch data: ${_err.message}`)
