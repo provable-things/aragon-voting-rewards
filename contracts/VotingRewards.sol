@@ -70,8 +70,8 @@ contract VotingRewards is AragonApp {
     event RewardsVaultChanged(address rewardsVault);
     event DandelionVotingChanged(address dandelionVoting);
     event PercentageRewardsChanged(uint256 percentageRewards);
-    event RewardDistributed(address beneficiary, uint256 amount, uint64 lockTime);
-    event RewardCollected(address beneficiary, uint256 amount);
+    event RewardDistributed(address indexed beneficiary, uint256 indexed amount, uint64 lockTime);
+    event RewardCollected(address indexed beneficiary, uint256 indexed amount);
     event EpochDurationChanged(uint64 epochDuration);
     event MissingVoteThresholdChanged(uint256 missingVotesThreshold);
     event LockTimeChanged(uint64 lockTime);
