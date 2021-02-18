@@ -14,7 +14,6 @@ const {
   getTotalReward,
   distributeRewardsToMany,
   distributeRewardsTo,
-  collectRewardsFor,
   semiTrustedCollectRewardsForMany,
 } = require('./helpers/utils')
 const { calculateRewards } = require('./helpers/calculate-reward')
