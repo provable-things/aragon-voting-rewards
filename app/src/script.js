@@ -5,6 +5,8 @@ import ERC20Abi from './abi/ERC20.json'
 import VotingAbi from './abi/Voting.json'
 import MinimeTokenAbi from './abi/MinimeToken.json'
 import { first } from 'rxjs/operators'
+import axios from 'axios'
+import BigNumber from 'bignumber.js'
 
 const app = new Aragon()
 
@@ -97,16 +99,16 @@ function initializeState(_initParams) {
       const votingContract = app.external(_initParams.dandelionVotingAddress, VotingAbi)
       const [votingTokenAddress, voteDurationBlocks] = await Promise.all([
         votingContract.token().toPromise(),
-        votingContract.durationBlocks().toPromise()
+        votingContract.durationBlocks().toPromise(),
       ])
-      
+
       const votingToken = await getTokenData(votingTokenAddress)
 
       const [epoch, pctBase, currentBlock, currentTimestampBlock] = await Promise.all([
         getEpochData(),
         app.call('PCT_BASE').toPromise(),
         getCurrentBlockNumber(),
-        getBlockTimestamp('latest')
+        getBlockTimestamp('latest'),
       ])
 
       return {
@@ -132,15 +134,17 @@ function initializeState(_initParams) {
 
 const handleEvent = async (_nextState) => {
   try {
-    if (_nextState.account) {
-      const [unlockedRewards, withdrawnRewards] = await Promise.all([
-        getUnlockedRewardsInfo(_nextState.account),
-        getWithdrawnRewardsInfo(_nextState.account)
+    const { account, rewardsToken } = _nextState
+    if (account) {
+      const [unlockedRewards, unlockedRewardsEvents, withdrawnRewards] = await Promise.all([
+        getUnlockedRewardsInfo(account),
+        getUnlockedRewardsInfoEvents(account, rewardsToken.decimals),
+        getWithdrawnRewardsInfo(account),
       ])
 
       return {
         ..._nextState,
-        unlockedRewards,
+        unlockedRewards: [...unlockedRewards, ...unlockedRewardsEvents],
         withdrawnRewards,
       }
     }
@@ -157,9 +161,17 @@ const handleAccountChange = async (_nextState, { account }) => {
     if (account) {
       const { dandelionVotingAddress, votingToken, rewardsToken } = _nextState
 
-      const [votes, unlockedRewards, withdrawnRewards, rewardsTokenBalance, votingTokenBalance] = await Promise.all([
+      const [
+        votes,
+        unlockedRewards,
+        unlockedRewardsEvents,
+        withdrawnRewards,
+        rewardsTokenBalance,
+        votingTokenBalance,
+      ] = await Promise.all([
         getVotes(dandelionVotingAddress, votingToken.address, account),
         getUnlockedRewardsInfo(account),
+        getUnlockedRewardsInfoEvents(account, rewardsToken.decimals),
         getWithdrawnRewardsInfo(account),
         getTokenBalance(rewardsToken.address, rewardsToken.decimals, account),
         getTokenBalance(votingToken.address, votingToken.decimals, account),
@@ -169,7 +181,7 @@ const handleAccountChange = async (_nextState, { account }) => {
         ..._nextState,
         account,
         votes,
-        unlockedRewards,
+        unlockedRewards: [...unlockedRewards, ...unlockedRewardsEvents],
         withdrawnRewards,
         rewardsTokenBalance,
         votingTokenBalance,
@@ -242,7 +254,6 @@ const getEpochData = async () => {
 const getUnlockedRewardsInfo = async (_receiver) => {
   try {
     const rewards = await app.call('getUnlockedRewardsInfo', _receiver).toPromise()
-
     for (let reward of rewards) {
       reward.lockDate = await getBlockTimestamp(reward.lockBlock)
     }
@@ -250,6 +261,25 @@ const getUnlockedRewardsInfo = async (_receiver) => {
     return rewards
   } catch (_err) {
     console.error(`Failed to load rewards: ${_err.message}`)
+    return []
+  }
+}
+
+const getUnlockedRewardsInfoEvents = async (_beneficiary, _decimals) => {
+  try {
+    const {
+      data: { uncollected = [] },
+    } = await axios.get(`https://eidoo.id/api/v1/get_rewards_info_2?ethAddress=${_beneficiary.toLowerCase()}`)
+    return uncollected.map(({ amount, lockStartTime, lockStartBlock, lockEndBlock }) => ({
+      amount: BigNumber(amount)
+        .multipliedBy(10 ** _decimals)
+        .toFixed(),
+      lockBlock: lockStartBlock,
+      lockTime: lockEndBlock - lockStartBlock,
+      lockDate: lockStartTime,
+    }))
+  } catch (_err) {
+    console.error(`Failed to load rewards (with events): ${_err.message}`)
     return []
   }
 }

@@ -1,11 +1,12 @@
 {
   "name": "voting-rewards",
-  "version": "1.0.0",
+  "version": "4.1.0",
   "main": "src/index.js",
   "dependencies": {
     "@aragon/api": "^2.0.0-beta.9",
     "@aragon/api-react": "^2.0.0-beta.9",
     "@aragon/ui": "^1.4.2",
+    "axios": "^0.21.1",
     "bignumber.js": "^9.0.0",
     "bootstrap": "^4.5.0",
     "core-js": "^3.6.5",
