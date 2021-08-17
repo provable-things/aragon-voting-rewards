@@ -64,14 +64,14 @@ contract VotingRewards is AragonApp {
     // NOTE: previousRewardsDistributionBlockNumber kept even if not used so as not to break the proxy contract storage after an upgrade
     mapping(address => uint64) private previousRewardsDistributionBlockNumber;
     mapping(address => Reward[]) public addressUnlockedRewards;
-    mapping(address => Reward[]) public addressWithdrawnRewards;
+    mapping(address => Reward[]) public addressWithdrawnRewards; // kept even if not used so as not to break the proxy contract storage after an upgrade
 
     event BaseVaultChanged(address baseVault);
     event RewardsVaultChanged(address rewardsVault);
     event DandelionVotingChanged(address dandelionVoting);
     event PercentageRewardsChanged(uint256 percentageRewards);
     event RewardDistributed(address indexed beneficiary, uint256 indexed amount, uint64 lockTime);
-    event RewardCollected(address indexed beneficiary, uint256 indexed amount);
+    event RewardCollected(address indexed beneficiary, uint256 amount, uint64 indexed lockBlock, uint64 lockTime);
     event EpochDurationChanged(uint64 epochDuration);
     event MissingVoteThresholdChanged(uint256 missingVotesThreshold);
     event LockTimeChanged(uint64 lockTime);
@@ -309,22 +309,22 @@ contract VotingRewards is AragonApp {
     function collectRewardsFor(address _beneficiary) public returns (bool) {
         uint64 currentBlockNumber = getBlockNumber64();
         Reward[] storage rewards = addressUnlockedRewards[_beneficiary];
-        require(rewards.length > 0, ERROR_NO_REWARDS);
 
-        uint256 collectedRewards = 0;
-        for (uint256 i = 0; i < rewards.length; i++) {
-            if (currentBlockNumber - rewards[i].lockBlock > rewards[i].lockTime && !_isRewardEmpty(rewards[i])) {
-                rewardsVault.transfer(rewardsToken, _beneficiary, rewards[i].amount);
-                collectedRewards = collectedRewards.add(1);
+        uint256 rewardsLength = rewards.length;
+        require(rewardsLength > 0, ERROR_NO_REWARDS);
 
-                addressWithdrawnRewards[_beneficiary].push(rewards[i]);
-                emit RewardCollected(_beneficiary, rewards[i].amount);
+        uint256 collectedRewardsAmount = 0;
+        for (uint256 i = 0; i < rewardsLength; i++) {
+            Reward reward = rewards[i];
 
+            if (currentBlockNumber - reward.lockBlock > reward.lockTime && !_isRewardEmpty(reward)) {
+                collectedRewardsAmount = collectedRewardsAmount + reward.amount;
+                emit RewardCollected(_beneficiary, reward.amount, reward.lockBlock, reward.lockTime);
                 delete rewards[i];
             }
         }
 
-        require(collectedRewards >= 1, ERROR_NO_REWARDS);
+        rewardsVault.transfer(rewardsToken, _beneficiary, collectedRewardsAmount);
         return true;
     }
 
