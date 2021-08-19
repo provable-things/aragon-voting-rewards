@@ -302,6 +302,13 @@ contract VotingRewards is AragonApp {
     }
 
     /**
+     * @notice collect rewards for an msg.sender
+     */
+    function collectRewards() external {
+        collectRewardsFor(msg.sender);
+    }
+
+    /**
      * @notice collect rewards for an address if lockTime is passed since when tokens have been distributed
      * @param _beneficiary address that should be fund with rewards
      * @dev rewardsVault should have TRANSFER_ROLE permission
