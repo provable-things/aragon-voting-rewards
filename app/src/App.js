@@ -5,12 +5,13 @@ import { useGuiStyle, useAppState } from '@aragon/api-react'
 import { Row, Col } from 'react-bootstrap'
 import EpochDetails from './components/EpochDetails'
 import Rewards from './components/Rewards'
+import { useRewards } from './hooks/rewards'
 
 const App = () => {
   const { actions } = useAppLogic()
   const { isSyncing, account } = useAppState()
-
   const { appearance } = useGuiStyle()
+  const { formattedTotalWithdrawable } = useRewards()
 
   const handleClick = (_e) => {
     actions.collect(account)
@@ -26,7 +27,11 @@ const App = () => {
             primary="Voting Rewards"
             secondary={
               <React.Fragment>
-                <Button mode="strong" label={'Collect all rewards'} onClick={handleClick} />
+                <Button
+                  mode="strong"
+                  label={`Collect all rewards${formattedTotalWithdrawable ? ` (${formattedTotalWithdrawable})` : ''}`}
+                  onClick={handleClick}
+                />
               </React.Fragment>
             }
           />

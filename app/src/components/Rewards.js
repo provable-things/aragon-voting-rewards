@@ -2,12 +2,11 @@ import React from 'react'
 import { Table, TableHeader, TableRow, TableCell, Text, Tag } from '@aragon/ui'
 import { useAppState } from '@aragon/api-react'
 import NoRewards from './NoRewards'
-import { UNLOCKED, WITHDRAWN } from '../utils/rewards-utils'
 import { useRewards } from '../hooks/rewards'
 
 const Rewards = (_props) => {
   const { rewardsToken } = useAppState()
-  const rewards = useRewards()
+  const { rewards } = useRewards()
 
   return rewards && rewards.length > 0 && rewardsToken ? (
     <Table
@@ -17,21 +16,21 @@ const Rewards = (_props) => {
         </TableRow>
       }
     >
-      {rewards.map(({ amountWithSymbol, state, remainder }, _index) => {
+      {rewards.map(({ amountWithSymbol, remainder }, _index) => {
         return (
           <TableRow key={_index}>
             <TableCell>
               <Text>{amountWithSymbol}</Text>
             </TableCell>
             <TableCell>
-              {state === WITHDRAWN ? <Tag mode="new">WITHDRAWN</Tag> : <Tag mode="identifier">UNLOCKED</Tag>}
+              <Tag mode="identifier">UNLOCKED</Tag>
             </TableCell>
             <TableCell
               css={`
                 font-weight: bold;
               `}
             >
-              {state === UNLOCKED ? (remainder !== '0 seconds' ? remainder : 'Collectable') : 'Collected'}
+              {remainder !== '0 seconds' ? remainder : 'Collectable'}
             </TableCell>
           </TableRow>
         )

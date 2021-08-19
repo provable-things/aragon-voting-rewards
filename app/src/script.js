@@ -76,6 +76,8 @@ async function initialize(_initParams) {
             return { ...nextState, isSyncing: false }
           case 'RewardDistributed':
             return handleEvent(nextState)
+          case 'RewardCollected':
+            return handleEvent(nextState)
           default:
             return nextState
         }
@@ -136,16 +138,14 @@ const handleEvent = async (_nextState) => {
   try {
     const { account, rewardsToken } = _nextState
     if (account) {
-      const [unlockedRewards, unlockedRewardsEvents, withdrawnRewards] = await Promise.all([
+      const [unlockedRewards, unlockedRewardsEvents] = await Promise.all([
         getUnlockedRewardsInfo(account),
         getUnlockedRewardsInfoEvents(account, rewardsToken.decimals),
-        getWithdrawnRewardsInfo(account),
       ])
 
       return {
         ..._nextState,
         unlockedRewards: [...unlockedRewards, ...unlockedRewardsEvents],
-        withdrawnRewards,
       }
     }
 
@@ -165,14 +165,12 @@ const handleAccountChange = async (_nextState, { account }) => {
         votes,
         unlockedRewards,
         unlockedRewardsEvents,
-        withdrawnRewards,
         rewardsTokenBalance,
         votingTokenBalance,
       ] = await Promise.all([
         getVotes(dandelionVotingAddress, votingToken.address, account),
         getUnlockedRewardsInfo(account),
         getUnlockedRewardsInfoEvents(account, rewardsToken.decimals),
-        getWithdrawnRewardsInfo(account),
         getTokenBalance(rewardsToken.address, rewardsToken.decimals, account),
         getTokenBalance(votingToken.address, votingToken.decimals, account),
       ])
@@ -182,7 +180,6 @@ const handleAccountChange = async (_nextState, { account }) => {
         account,
         votes,
         unlockedRewards: [...unlockedRewards, ...unlockedRewardsEvents],
-        withdrawnRewards,
         rewardsTokenBalance,
         votingTokenBalance,
       }
@@ -280,21 +277,6 @@ const getUnlockedRewardsInfoEvents = async (_beneficiary, _decimals) => {
     }))
   } catch (_err) {
     console.error(`Failed to load rewards (with events): ${_err.message}`)
-    return []
-  }
-}
-
-const getWithdrawnRewardsInfo = async (_receiver) => {
-  try {
-    const rewards = await app.call('getWithdrawnRewardsInfo', _receiver).toPromise()
-
-    for (let reward of rewards) {
-      reward.lockDate = await getBlockTimestamp(reward.lockBlock)
-    }
-
-    return rewards
-  } catch (_err) {
-    console.error(`Failed to load rewards: ${_err.message}`)
     return []
   }
 }

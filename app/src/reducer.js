@@ -17,7 +17,6 @@ const reducer = (_state) => {
       rewards: [],
       votes: [],
       unlockedRewards: [],
-      withdrawnRewards: [],
     }
   }
 
@@ -27,7 +26,6 @@ const reducer = (_state) => {
     votingTokenBalance,
     epoch,
     unlockedRewards,
-    withdrawnRewards,
     settings,
     voteDurationBlocks,
   } = _state
@@ -71,29 +69,20 @@ const reducer = (_state) => {
           }
         })
       : [],
-    rewards:
-      unlockedRewards && withdrawnRewards
-        ? [
-            ...unlockedRewards
-              .filter(({ amount, lockTime, lockBlock }) => amount !== '0' && lockTime !== '0' && lockBlock !== '0')
-              .map((_reward) => {
-                return {
-                  ..._reward,
-                  amount: new BigNumber(_reward.amount),
-                  lockTime: parseInt(_reward.lockTime),
-                  state: UNLOCKED,
-                }
-              }),
-            ...withdrawnRewards.map((_reward) => {
+    rewards: unlockedRewards
+      ? [
+          ...unlockedRewards
+            .filter(({ amount, lockTime, lockBlock }) => amount !== '0' && lockTime !== '0' && lockBlock !== '0')
+            .map((_reward) => {
               return {
                 ..._reward,
                 amount: new BigNumber(_reward.amount),
                 lockTime: parseInt(_reward.lockTime),
-                state: WITHDRAWN,
+                state: UNLOCKED,
               }
             }),
-          ].sort((_r1, _r2) => _r1.lockDate - _r2.lockDate)
-        : [],
+        ].sort((_r1, _r2) => _r1.lockDate - _r2.lockDate)
+      : [],
   }
 }
 
