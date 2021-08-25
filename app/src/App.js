@@ -9,12 +9,12 @@ import { useRewards } from './hooks/rewards'
 
 const App = () => {
   const { actions } = useAppLogic()
-  const { isSyncing, account } = useAppState()
+  const { isSyncing } = useAppState()
   const { appearance } = useGuiStyle()
   const { formattedTotalWithdrawable } = useRewards()
 
   const handleClick = (_e) => {
-    actions.collect(account)
+    actions.collect()
   }
 
   return (

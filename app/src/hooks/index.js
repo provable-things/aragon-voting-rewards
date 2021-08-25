@@ -5,9 +5,9 @@ const useCollectRewardAction = () => {
   const { api } = useAragonApi()
 
   return useCallback(
-    (_receiver) => {
+    () => {
       try {
-        api.collectRewardsFor(_receiver).toPromise()
+        api.collectRewards().toPromise()
       } catch (error) {
         console.error(error)
       }
