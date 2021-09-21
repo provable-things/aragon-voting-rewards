@@ -26,6 +26,7 @@ contract VotingRewards is AragonApp {
     bytes32 public constant CHANGE_VAULT_ROLE = keccak256("CHANGE_VAULT_ROLE");
     bytes32 public constant CHANGE_REWARDS_TOKEN_ROLE = keccak256("CHANGE_REWARDS_TOKEN_ROLE");
     bytes32 public constant CHANGE_VOTING_ROLE = keccak256("CHANGE_VOTING_ROLE");
+    bytes32 public constant COLLECT_REWARDS_ROLE = keccak256("COLLECT_REWARDS_ROLE");
 
     uint64 public constant PCT_BASE = 10**18; // 0% = 0; 1% = 10^16; 100% = 10^18
 
@@ -148,32 +149,9 @@ contract VotingRewards is AragonApp {
     }
 
     /**
-     * @notice distribute rewards for a list of address. Tokens are locked for lockTime in rewardsVault
-     * @param _beneficiaries address that are looking for reward
-     * @dev this function should be called from outside each _epochDuration seconds
-     */
-    function distributeRewardsToMany(address[] _beneficiaries, uint256[] _amount)
-        external
-        auth(DISTRIBUTE_REWARDS_ROLE)
-        returns (bool)
-    {
-        require(isDistributionOpen, ERROR_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED);
-
-        uint256 totalRewardAmount = 0;
-        for (uint256 i = 0; i < _beneficiaries.length; i++) {
-            // NOTE: switching to a semi-trusted solution in order to spend less in gas
-            // _assignUnlockedReward(_beneficiaries[i], _amount[i]);
-            totalRewardAmount = totalRewardAmount.add(_amount[i]);
-            emit RewardDistributed(_beneficiaries[i], _amount[i], lockTime);
-        }
-
-        baseVault.transfer(rewardsToken, rewardsVault, totalRewardAmount);
-        return true;
-    }
-
-    /**
      * @notice Distribute rewards to _beneficiary
      * @param _beneficiary address to which the deposit will be transferred if successful
+     * @param _amount corresponding amount for each address
      * @dev baseVault should have TRANSFER_ROLE permission
      */
     function distributeRewardsTo(address _beneficiary, uint256 _amount)
@@ -182,12 +160,69 @@ contract VotingRewards is AragonApp {
         returns (bool)
     {
         require(isDistributionOpen, ERROR_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED);
-        // NOTE: switching to a semi-trusted solution in order to spend less in gas
-        // _assignUnlockedReward(_beneficiary, _amount);
-        baseVault.transfer(rewardsToken, rewardsVault, _amount);
-
-        emit RewardDistributed(_beneficiary, _amount, lockTime);
+        _distributeRewardsTo(_beneficiary, _amount, lockTime);
         return true;
+    }
+
+    /**
+     * @notice distribute rewards for a list of address. Tokens are locked for lockTime in rewardsVault
+     * @param _beneficiaries address that are looking for reward
+     * @param _amounts corresponding amount for each address
+     * @dev this function should be called from outside each _epochDuration seconds
+     */
+    function distributeRewardsToMany(address[] _beneficiaries, uint256[] _amounts)
+        external
+        auth(DISTRIBUTE_REWARDS_ROLE)
+        returns (bool)
+    {
+        require(isDistributionOpen, ERROR_EPOCH_REWARDS_DISTRIBUTION_NOT_OPENED);
+        _distributeRewardsToMany(_beneficiaries, _amounts, lockTime);
+        return true;
+    }
+
+    /**
+     * @notice force reward distribution to a _beneficiary
+     * @param _beneficiary address to which the deposit will be transferred if successful
+     * @param _amount corresponding amount for each address
+     * @param _lockTime lockTime
+     */
+    function forceDistributeRewardsTo(
+        address _beneficiary,
+        uint256 _amount,
+        uint64 _lockTime
+    ) external auth(DISTRIBUTE_REWARDS_ROLE) returns (bool) {
+        _distributeRewardsTo(_beneficiary, _amount, _lockTime);
+        return true;
+    }
+
+    /**
+     * @notice force rewards distribution for a list of addresses. Tokens are locked for lockTime in rewardsVault
+     * @param _beneficiaries address that are looking for reward
+     * @param _amounts corresponding amount for each address
+     * @param _lockTime lockTime
+     */
+    function forceDistributeRewardsToMany(
+        address[] _beneficiaries,
+        uint256[] _amounts,
+        uint64 _lockTime
+    ) external auth(DISTRIBUTE_REWARDS_ROLE) returns (bool) {
+        _distributeRewardsToMany(_beneficiaries, _amounts, _lockTime);
+        return true;
+    }
+
+    /**
+     * @notice collect rewards for msg.sender
+     */
+    function collectRewards() external {
+        _collectRewardsFor(msg.sender, msg.sender);
+    }
+
+    /**
+     * @notice collect rewards for an address
+     * @param _beneficiary address that should be fund with rewards
+     */
+    function collectRewardsFor(address _beneficiary) external {
+        _collectRewardsFor(_beneficiary, _beneficiary);
     }
 
     /**
@@ -197,8 +232,32 @@ contract VotingRewards is AragonApp {
      */
     function collectRewardsForMany(address[] _beneficiaries) external {
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
-            collectRewardsFor(_beneficiaries[i]);
+            _collectRewardsFor(_beneficiaries[i], _beneficiaries[i]);
         }
+    }
+
+    /**
+     * @notice collect rewards for many addresses specifying the effective receiverers
+     * @param _beneficiaries addresses that should be fund with rewards
+     * @param _receivers who receives the rewards
+     */
+    function forceCollectRewardsForMany(address[] _beneficiaries, address[] _receivers)
+        external
+        auth(COLLECT_REWARDS_ROLE)
+    {
+        uint256 beneficiaresLength = _beneficiaries.length;
+        for (uint256 i = 0; i < beneficiaresLength; i++) {
+            _collectRewardsFor(_beneficiaries[i], _receivers[i]);
+        }
+    }
+
+    /**
+     * @notice collect rewards for an address specifying the effective receiver
+     * @param _beneficiary address that should be fund with rewards
+     * @param _receiver who receives the rewards
+     */
+    function forceCollectRewardsFor(address _beneficiary, address _receiver) external auth(COLLECT_REWARDS_ROLE) {
+        _collectRewardsFor(_beneficiary, _receiver);
     }
 
     /**
@@ -302,18 +361,12 @@ contract VotingRewards is AragonApp {
     }
 
     /**
-     * @notice collect rewards for an msg.sender
-     */
-    function collectRewards() external {
-        collectRewardsFor(msg.sender);
-    }
-
-    /**
      * @notice collect rewards for an address if lockTime is passed since when tokens have been distributed
      * @param _beneficiary address that should be fund with rewards
+     * @param _receiver address that will receive the rewards
      * @dev rewardsVault should have TRANSFER_ROLE permission
      */
-    function collectRewardsFor(address _beneficiary) public returns (bool) {
+    function _collectRewardsFor(address _beneficiary, address _receiver) internal returns (bool) {
         uint64 currentBlockNumber = getBlockNumber64();
         Reward[] storage rewards = addressUnlockedRewards[_beneficiary];
 
@@ -326,12 +379,53 @@ contract VotingRewards is AragonApp {
 
             if (currentBlockNumber - reward.lockBlock > reward.lockTime && !_isRewardEmpty(reward)) {
                 collectedRewardsAmount = collectedRewardsAmount + reward.amount;
-                emit RewardCollected(_beneficiary, reward.amount, reward.lockBlock, reward.lockTime);
+                emit RewardCollected(_receiver, reward.amount, reward.lockBlock, reward.lockTime);
                 delete rewards[i];
             }
         }
 
-        rewardsVault.transfer(rewardsToken, _beneficiary, collectedRewardsAmount);
+        rewardsVault.transfer(rewardsToken, _receiver, collectedRewardsAmount);
+        return true;
+    }
+
+    /**
+     * @notice Distribute rewards to _beneficiary
+     * @param _beneficiary address to which the deposit will be transferred if successful
+     * @param _amount corresponding amount for each address
+     * @dev baseVault should have TRANSFER_ROLE permission
+     */
+    function _distributeRewardsTo(
+        address _beneficiary,
+        uint256 _amount,
+        uint64 _lockTime
+    ) internal returns (bool) {
+        // NOTE: switching to a semi-trusted solution in order to spend less in gas
+        // _assignUnlockedReward(_beneficiary, _amount, _lockTime);
+        baseVault.transfer(rewardsToken, rewardsVault, _amount);
+        emit RewardDistributed(_beneficiary, _amount, _lockTime);
+        return true;
+    }
+
+    /**
+     * @notice distribute rewards for a list of address. Tokens are locked for lockTime in rewardsVault
+     * @param _beneficiaries address that are looking for reward
+     * @param _amounts corresponding amount for each address
+     * @dev baseVault should have TRANSFER_ROLE permission
+     */
+    function _distributeRewardsToMany(
+        address[] _beneficiaries,
+        uint256[] _amounts,
+        uint64 _lockTime
+    ) internal returns (bool) {
+        uint256 totalRewardAmount = 0;
+        for (uint256 i = 0; i < _beneficiaries.length; i++) {
+            // NOTE: switching to a semi-trusted solution in order to spend less in gas
+            // _assignUnlockedReward(_beneficiaries[i], _amounts[i], _lockTime);
+            totalRewardAmount = totalRewardAmount.add(_amounts[i]);
+            emit RewardDistributed(_beneficiaries[i], _amounts[i], _lockTime);
+        }
+
+        baseVault.transfer(rewardsToken, rewardsVault, totalRewardAmount);
         return true;
     }
 
@@ -339,8 +433,13 @@ contract VotingRewards is AragonApp {
      * @notice Check if msg.sender is able to be rewarded, and in positive case,
      *         he will be funded with the corresponding earned amount of tokens
      * @param _beneficiary address to which the deposit will be transferred if successful
+     * @param _amount amount
      */
-    function _assignUnlockedReward(address _beneficiary, uint256 _amount) internal returns (bool) {
+    function _assignUnlockedReward(
+        address _beneficiary,
+        uint256 _amount,
+        uint64 _lockTime
+    ) internal returns (bool) {
         Reward[] storage unlockedRewards = addressUnlockedRewards[_beneficiary];
 
         uint64 currentBlockNumber = getBlockNumber64();
@@ -349,7 +448,7 @@ contract VotingRewards is AragonApp {
 
         // NOTE: avoid double collecting for the same epoch
         require(currentBlockNumber.sub(lastBlockDistributedReward) > epochDuration, ERROR_EPOCH);
-        addressUnlockedRewards[_beneficiary].push(Reward(_amount, currentBlockNumber, lockTime));
+        addressUnlockedRewards[_beneficiary].push(Reward(_amount, currentBlockNumber, _lockTime));
         return true;
     }
 

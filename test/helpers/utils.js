@@ -47,6 +47,54 @@ const distributeRewardsToMany = async (_votingReward, _beneficiaries, _amounts, 
     .map(({ args, blockNumber }) => ({ ...args, lockBlock: blockNumber }))
 }
 
+const forceDistributeRewardsToMany = async (
+  _votingReward,
+  _beneficiaries,
+  _amounts,
+  _lockTime,
+  _appManager,
+  _interval = 20
+) => {
+  const chunksLength = Math.floor(_beneficiaries.length / _interval)
+  const remainder = _beneficiaries.length % _interval
+
+  const allLogs = []
+  for (let chunk = 0; chunk < chunksLength; chunk++) {
+    const from = chunk * _interval
+    const to = chunk * _interval + _interval
+
+    const {
+      receipt: { logs },
+    } = await _votingReward.forceDistributeRewardsToMany(
+      _beneficiaries.slice(from, to),
+      _amounts.slice(from, to),
+      _lockTime,
+      {
+        from: _appManager,
+        gas: 9500000,
+      }
+    )
+    allLogs.push(...logs)
+  }
+
+  const {
+    receipt: { logs },
+  } = await _votingReward.forceDistributeRewardsToMany(
+    _beneficiaries.slice(_beneficiaries.length - remainder, _beneficiaries.length),
+    _amounts.slice(_amounts.length - remainder, _amounts.length),
+    _lockTime,
+    {
+      from: _appManager,
+      gas: 9500000,
+    }
+  )
+  allLogs.push(...logs)
+
+  return allLogs
+    .filter(({ event }) => event === 'RewardDistributed')
+    .map(({ args, blockNumber }) => ({ ...args, lockBlock: blockNumber }))
+}
+
 const collectRewardsForMany = async (_votingReward, _beneficiaries, _appManager, _interval = 10) => {
   const chunksLength = Math.floor(_beneficiaries.length / _interval)
   const remainder = _beneficiaries.length % _interval
@@ -105,8 +153,30 @@ const distributeRewardsTo = async (_votingReward, _beneficiary, _reward, _appMan
     .map(({ args, blockNumber }) => ({ ...args, lockBlock: blockNumber }))
 }
 
+const forceDistributeRewardsTo = async (_votingReward, _beneficiary, _reward, _lockTime, _appManager) => {
+  const {
+    receipt: { logs },
+  } = await _votingReward.forceDistributeRewardsTo(_beneficiary, _reward, _lockTime, {
+    from: _appManager,
+  })
+
+  return logs
+    .filter(({ event }) => event === 'RewardDistributed')
+    .map(({ args, blockNumber }) => ({ ...args, lockBlock: blockNumber }))
+}
+
 const collectRewardsFor = (_votingReward, _beneficiary, _appManager) =>
   _votingReward.collectRewardsFor(_beneficiary, {
+    from: _appManager,
+  })
+
+const forceCollectRewardsFor = (_votingReward, _beneficiary, _receiver, _appManager) =>
+  _votingReward.forceCollectRewardsFor(_beneficiary, _receiver, {
+    from: _appManager,
+  })
+
+const forceCollectRewardsForMany = (_votingReward, _beneficiaries, _receivers, _appManager) =>
+  _votingReward.forceCollectRewardsForMany(_beneficiaries, _receivers, {
     from: _appManager,
   })
 
@@ -149,4 +219,8 @@ module.exports = {
   distributeRewardsTo,
   collectRewardsFor,
   semiTrustedCollectRewardsForMany,
+  forceDistributeRewardsToMany,
+  forceDistributeRewardsTo,
+  forceCollectRewardsFor,
+  forceCollectRewardsForMany,
 }

@@ -15,6 +15,10 @@ const {
   distributeRewardsToMany,
   distributeRewardsTo,
   semiTrustedCollectRewardsForMany,
+  forceDistributeRewardsToMany,
+  forceDistributeRewardsTo,
+  forceCollectRewardsFor,
+  forceCollectRewardsForMany,
 } = require('./helpers/utils')
 const { calculateRewards } = require('./helpers/calculate-reward')
 
@@ -66,7 +70,8 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
     CHANGE_LOCK_TIME_ROLE,
     CHANGE_REWARDS_TOKEN_ROLE,
     CHANGE_VOTING_ROLE,
-    CHANGE_MISSING_VOTES_THRESHOLD_ROLE
+    CHANGE_MISSING_VOTES_THRESHOLD_ROLE,
+    COLLECT_REWARDS_ROLE
 
   const NOT_CONTRACT = appManager
 
@@ -82,6 +87,7 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
     CHANGE_REWARDS_TOKEN_ROLE = await votingRewardBase.CHANGE_REWARDS_TOKEN_ROLE()
     CHANGE_VOTING_ROLE = await votingRewardBase.CHANGE_VOTING_ROLE()
     CHANGE_MISSING_VOTES_THRESHOLD_ROLE = await votingRewardBase.CHANGE_MISSING_VOTES_THRESHOLD_ROLE()
+    COLLECT_REWARDS_ROLE = await votingRewardBase.COLLECT_REWARDS_ROLE()
 
     votingBase = await Voting.new()
     CREATE_VOTES_ROLE = await votingBase.CREATE_VOTES_ROLE()
@@ -381,8 +387,19 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         await setOpenPermission(acl, voting.address, CREATE_VOTES_ROLE, appManager)
       })
 
-      it('Should fail distributing rewards because of no permission', async () => {
+      it('Should fail on distributing rewards because of no permission', async () => {
         await assertRevert(distributeRewardsToMany(votingReward, [appManager], [1], appManager), 'APP_AUTH_FAILED')
+      })
+
+      it('Should fail on collecting rewards because of no permission', async () => {
+        await assertRevert(forceCollectRewardsFor(votingReward, appManager, appManager, appManager), 'APP_AUTH_FAILED')
+      })
+
+      it('Should fail on collecting rewards because of no permission', async () => {
+        await assertRevert(
+          forceCollectRewardsForMany(votingReward, [appManager], [appManager], appManager),
+          'APP_AUTH_FAILED'
+        )
       })
 
       it('Should fail on opening a distribition for an epoch because no permission', async () => {
@@ -411,7 +428,9 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
         executionTarget = await ExecutionTarget.new()
         await setPermission(acl, votingReward.address, baseVault.address, TRANSFER_ROLE, appManager)
         await setPermission(acl, appManager, rewardsVault.address, TRANSFER_ROLE, appManager)
+        // await setPermission(acl, votingReward.address, rewardsVault.address, TRANSFER_ROLE, appManager)
         await setPermission(acl, appManager, votingReward.address, DISTRIBUTE_REWARDS_ROLE, appManager)
+        await setPermission(acl, appManager, votingReward.address, COLLECT_REWARDS_ROLE, appManager)
         await setPermission(acl, appManager, votingReward.address, OPEN_REWARDS_DISTRIBUTION_ROLE, appManager)
         await setPermission(acl, appManager, votingReward.address, CLOSE_REWARDS_DISTRIBUTION_ROLE, appManager)
       })
@@ -906,6 +925,125 @@ contract('VotingRewards', ([appManager, ...accounts]) => {
           )
         }
       }).timeout(500000)
+
+      it('Should be able to force rewards distribution to many addresses', async () => {
+        const accountsToReward = [accounts[0], accounts[1], accounts[2]]
+        const rewards = ['1000000000000000000', '2000000000000000000', '3000000000000000000']
+        const distributions = await forceDistributeRewardsToMany(
+          votingReward,
+          accountsToReward,
+          rewards,
+          ONE_BLOCK,
+          appManager
+        )
+
+        assert.strictEqual(distributions.length, rewards.length)
+        distributions.forEach(({ beneficiary, amount, lockTime }, _index) => {
+          assert.strictEqual(beneficiary, accountsToReward[_index])
+          assert.strictEqual(amount.toString(), rewards[_index])
+          assert.strictEqual(parseInt(lockTime, 10), ONE_BLOCK)
+        })
+      }).timeout(50000)
+
+      it('Should be able to force rewards distribution to one address', async () => {
+        const addressToReward = accounts[1]
+        const reward = '1000000000000000000'
+        const distribution = await forceDistributeRewardsTo(
+          votingReward,
+          addressToReward,
+          reward,
+          ONE_BLOCK,
+          appManager
+        )
+
+        assert.strictEqual(distribution.length, 1)
+        assert.strictEqual(distribution[0].beneficiary, addressToReward)
+        assert.strictEqual(distribution[0].amount.toString(), reward)
+        assert.strictEqual(parseInt(distribution[0].lockTime, 10), ONE_BLOCK)
+      }).timeout(50000)
+
+      /*it('Should be able to distribute and collect rewards using forced mode', async () => {
+        // remove the comment at line 426 in VotingRewards.sol and run this test
+        const startBlockNumberOfCurrentEpoch = await now()
+        const expectedReward = await getTotalReward([accounts[0]], miniMeToken, PERCENTAGE_REWARD)
+
+        await newVote(
+          voting,
+          executionTarget.address,
+          executionTarget.contract.methods.execute().encodeABI(),
+          appManager
+        )
+
+        await miniMeToken.generateTokens(accounts[0], 10)
+        await vote(voting, 1, accounts[0])
+
+        await mineBlocks(EPOCH_BLOCKS)
+        await openRewardsDistributionForEpoch(votingReward, startBlockNumberOfCurrentEpoch, appManager)
+
+        const rewards = await calculateRewards(
+          votingReward,
+          voting,
+          miniMeToken,
+          MISSING_VOTES_THRESHOLD,
+          PERCENTAGE_REWARD,
+          [accounts[0]]
+        )
+
+        await distributeRewardsToMany(votingReward, [accounts[0]], rewards, appManager, 20)
+        await closeRewardsDistributionForCurrentEpoch(votingReward, appManager)
+
+        await mineBlocks(LOCK_TIME_BLOCKS)
+        await forceCollectRewardsFor(votingReward, accounts[0], accounts[1], appManager)
+
+        const actualBalances = await getAccountsBalance([accounts[1]], rewardsToken)
+        assert.strictEqual(parseInt(Object.values(actualBalances)[0], 10), parseInt(expectedReward, 10))
+      }).timeout(200000)
+
+      it('Should be able to distribute and collect rewards using forced mode', async () => {
+        // remove the comment at line 426 in VotingRewards.sol and run this test
+        const startBlockNumberOfCurrentEpoch = await now()
+        const expectedReward = await getTotalReward(accounts, miniMeToken, PERCENTAGE_REWARD)
+
+        await newVote(
+          voting,
+          executionTarget.address,
+          executionTarget.contract.methods.execute().encodeABI(),
+          appManager
+        )
+
+        for (const account of accounts) {
+          await miniMeToken.generateTokens(account, 10)
+          await vote(voting, 1, account)
+        }
+
+        await mineBlocks(EPOCH_BLOCKS)
+        await openRewardsDistributionForEpoch(votingReward, startBlockNumberOfCurrentEpoch, appManager)
+
+        const rewards = await calculateRewards(
+          votingReward,
+          voting,
+          miniMeToken,
+          MISSING_VOTES_THRESHOLD,
+          PERCENTAGE_REWARD,
+          accounts
+        )
+
+        await distributeRewardsToMany(votingReward, accounts, rewards, appManager, 20)
+        await closeRewardsDistributionForCurrentEpoch(votingReward, appManager)
+
+        await mineBlocks(LOCK_TIME_BLOCKS)
+        await forceCollectRewardsForMany(
+          votingReward,
+          accounts,
+          accounts.map(() => accounts[0]),
+          appManager
+        )
+
+        for (let i = 0; i < accounts.length; i++) {
+          const actualBalances = await getAccountsBalance([accounts[i]], rewardsToken)
+          assert.strictEqual(parseInt(Object.values(actualBalances)[0], 10), i === 0 ? parseInt(expectedReward, 10) : 0)
+        }
+      }).timeout(200000)*/
     })
   })
 })
