@@ -237,7 +237,7 @@ contract VotingRewards is AragonApp {
     }
 
     /**
-     * @notice collect rewards for many addresses specifying the effective receiverers
+     * @notice collect rewards for many addresses specifying the effective receivers
      * @param _beneficiaries addresses that should be fund with rewards
      * @param _receivers who receives the rewards
      */
