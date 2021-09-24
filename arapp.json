@@ -49,6 +49,11 @@
       "name": "Change voting contract",
       "id": "CHANGE_VOTING_ROLE",
       "params": []
+    },
+    {
+      "name": "Collect reward role",
+      "id": "COLLECT_REWARDS_ROLE",
+      "params": []
     }
   ],
   "environments": {
